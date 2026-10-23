@@ -52,6 +52,22 @@ public static class CourseEndpoints
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"CourseMemberships\" (\"CourseId\", \"UserId\", \"JoinedAt\") VALUES ({id}, {userId}, {DateTimeOffset.UtcNow}) ON CONFLICT DO NOTHING", ct);
             return Results.NoContent();
         });
+        courses.MapGet("/{id:guid}/preview", async (Guid id, HttpContext context, AppDbContext db, CancellationToken ct) =>
+        {
+            var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var course = await db.Courses.AsNoTracking().Where(c => c.Id == id).Select(c => new
+            {
+                c.Id,
+                c.Title,
+                c.Description,
+                c.IsCurated,
+                c.IsRecognized,
+                joined = db.CourseMemberships.Any(m => m.CourseId == id && m.UserId == userId),
+                canRead = context.User.IsInRole("Admin") || db.CourseMemberships.Any(m => m.CourseId == id && m.UserId == userId),
+                materialCount = db.Materials.Count(m => m.CourseId == id)
+            }).SingleOrDefaultAsync(ct);
+            return course is null ? Results.NotFound() : Results.Ok(course);
+        });
         courses.MapPut("/{id:guid}/recognition", async (Guid id, Recognition request, AppDbContext db, CancellationToken ct) =>
         {
             var course = await db.Courses.FindAsync([id], ct);
@@ -72,8 +88,22 @@ public static class CourseEndpoints
             var course = await db.Courses.AsNoTracking().SingleOrDefaultAsync(c => c.Id == id, ct);
             if (course is null || !await CanReadAsync(id, context.User, db, ct)) return Results.NotFound();
             var materials = await db.Materials.AsNoTracking().Where(m => m.CourseId == id).OrderBy(m => m.SortOrder)
-                .Select(m => new { m.Id, m.Title, m.FileName, m.ContentType, m.LessonId, m.CurrentVersionId }).ToListAsync(ct);
+                .ThenBy(m => m.Id)
+                .Select(m => new
+                {
+                    m.Id,
+                    m.Title,
+                    m.FileName,
+                    m.ContentType,
+                    m.LessonId,
+                    m.CurrentVersionId,
+                    indexed = db.DocumentChunks.Any(c => c.MaterialVersionId == m.CurrentVersionId && c.Model == PythonAiBridge.Model),
+                    pageCount = db.MaterialVersions.Where(v => v.Id == m.CurrentVersionId).Select(v => v.PageCount).FirstOrDefault()
+                }).ToListAsync(ct);
             using var source = JsonDocument.Parse(course.SourceMetadataJson ?? "{}");
+            var chapters = source.RootElement.TryGetProperty("chapters", out var sourceChapters) && sourceChapters.ValueKind == JsonValueKind.Array
+                ? sourceChapters.EnumerateArray().Select(ch => new { id = ch.GetProperty("id").GetString(), title = ch.GetProperty("title").GetString() }).ToArray()
+                : [];
             return Results.Ok(new
             {
                 course.Id,
@@ -82,7 +112,7 @@ public static class CourseEndpoints
                 course.CreatorId,
                 course.IsCurated,
                 course.IsRecognized,
-                structure = source.RootElement.Clone(),
+                structure = new { chapters },
                 materials
             });
         });

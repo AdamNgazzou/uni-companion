@@ -14,6 +14,7 @@ export type Course = {
   isRecognized: boolean;
   joined: boolean;
   materialCount: number;
+  canRead?: boolean;
 };
 export type Material = {
   id: string;
@@ -22,8 +23,13 @@ export type Material = {
   contentType: string;
   lessonId?: string;
   currentVersionId?: string;
+  indexed?: boolean;
+  pageCount?: number;
 };
-export type CourseDetail = Course & { materials: Material[]; structure: Record<string, unknown> };
+export type CourseDetail = Course & {
+  materials: Material[];
+  structure: { chapters?: { id: string; title: string }[] };
+};
 export type Citation = {
   chunkId: string;
   materialId: string;

@@ -202,7 +202,11 @@ function ThreadPreview({ post }: { post: CommunityPost }) {
   );
 }
 export function DiscussScreen() {
-  const [courseId, setCourse] = useState('');
+  const params = useLocalSearchParams<{ courseId?: string }>();
+  return <DiscussionFeed key={params.courseId || ''} courseId={params.courseId || ''} />;
+}
+function DiscussionFeed({ courseId }: { courseId: string }) {
+  const setCourse = (value: string) => router.setParams({ courseId: value });
   const [kind, setKind] = useState('');
   const [sort, setSort] = useState('recent');
   const [page, setPage] = useState(1);

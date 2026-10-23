@@ -10,6 +10,8 @@ export function useResource<T>(path: string | null) {
   useFocusEffect(
     useCallback(() => {
       if (!path) {
+        setData(null);
+        setError('');
         setLoading(false);
         return;
       }

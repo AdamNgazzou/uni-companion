@@ -21,7 +21,15 @@ import { colors as c } from '../theme';
 import { api, newKey } from '../api/runtime';
 import { errorText } from '../api/client';
 import { jobPoller } from '../api/polling';
-import { pending, type Attempt, type Citation, type Job, type StudyRequest } from '../api/types';
+import {
+  pending,
+  type Attempt,
+  type Citation,
+  type Job,
+  type StudyRequest,
+  type CourseDetail,
+} from '../api/types';
+import { sourceScope } from './course-resources';
 import { useResource } from './hooks';
 import { ResourceState } from './courses';
 import PdfCanvas from '../pdf/PdfCanvas';
@@ -112,6 +120,13 @@ export function StudySetupScreen() {
   const [language, setLanguage] = useState<'en' | 'fr'>(params.language === 'fr' ? 'fr' : 'en');
   const [count, setCount] = useState<5 | 10>(5);
   const [chapter, setChapter] = useState(false);
+  const scope = useResource<CourseDetail>(params.courseId ? `/courses/${params.courseId}` : null);
+  const included = scope.data
+    ? sourceScope(scope.data, params.materialId, chapter ? params.chapterId : undefined)
+    : [];
+  const sectionTitle = scope.data?.structure.chapters?.find(
+    (item) => item.id === params.chapterId,
+  )?.title;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const key = useRef(newKey());
@@ -158,7 +173,15 @@ export function StudySetupScreen() {
                 : 'Let’s practise'
           }
           busy={busy}
-          disabled={kind === 'answer' && !question.trim()}
+          disabled={
+            scope.loading ||
+            !!scope.error ||
+            (kind === 'answer'
+              ? !question.trim()
+              : !included.some(
+                  (material) => material.contentType === 'application/pdf' && material.indexed,
+                ))
+          }
           onPress={() => void start()}
           icon="ArrowRight"
         />
@@ -169,7 +192,7 @@ export function StudySetupScreen() {
           kind === 'answer'
             ? 'Ask your companion'
             : kind === 'summary'
-              ? 'The key ideas'
+              ? 'Summary'
               : 'A little practice'
         }
       />
@@ -203,9 +226,25 @@ export function StudySetupScreen() {
         <>
           <Section title="Cover what?" />
           <Chip label="This document" selected={!chapter} onPress={() => setChapter(false)} />
-          <Chip label="The whole chapter" selected={chapter} onPress={() => setChapter(true)} />
+          <Chip
+            label={sectionTitle || 'This section'}
+            selected={chapter}
+            onPress={() => setChapter(true)}
+          />
         </>
       )}
+      <Section title="Sources for this session" />
+      <ResourceState {...scope} retry={scope.reload} />
+      {included.map((material) => (
+        <T key={material.id} variant="small">
+          {material.title} ·{' '}
+          {material.contentType !== 'application/pdf'
+            ? 'Not used: only PDFs are supported'
+            : material.indexed
+              ? 'Indexed PDF'
+              : 'PDF indexing pending'}
+        </T>
+      ))}
       {kind === 'quiz' && (
         <>
           <Section title="How many questions?" />

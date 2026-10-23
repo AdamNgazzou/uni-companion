@@ -75,8 +75,21 @@ public sealed class CourseTests(ApiFixture app) : IClassFixture<ApiFixture>
         var stranger = await app.RegisterAsync();
         using var joined = app.AsUser(member.Access);
         using var other = app.AsUser(stranger.Access);
+        var preview = await other.GetFromJsonAsync<JsonElement>($"/api/v1/courses/{courseId}/preview");
+        Assert.False(preview.GetProperty("joined").GetBoolean());
+        Assert.False(preview.GetProperty("canRead").GetBoolean());
+        Assert.False(preview.TryGetProperty("materials", out _));
+        Assert.False(preview.TryGetProperty("structure", out _));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await app.Client.GetAsync($"/api/v1/courses/{courseId}/preview")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await joined.GetAsync($"/api/v1/materials/{materialId}/content")).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await joined.PostAsync($"/api/v1/courses/{courseId}/join", null)).StatusCode);
+        var joinedPreview = await joined.GetFromJsonAsync<JsonElement>($"/api/v1/courses/{courseId}/preview");
+        Assert.True(joinedPreview.GetProperty("joined").GetBoolean());
+        Assert.True(joinedPreview.GetProperty("canRead").GetBoolean());
+        var joinedDetail = await joined.GetFromJsonAsync<JsonElement>($"/api/v1/courses/{courseId}");
+        Assert.NotEmpty(joinedDetail.GetProperty("structure").GetProperty("chapters").EnumerateArray());
+        Assert.All(joinedDetail.GetProperty("structure").GetProperty("chapters").EnumerateArray(), chapter =>
+            Assert.Equal(["id", "title"], chapter.EnumerateObject().Select(p => p.Name)));
         Assert.Equal(HttpStatusCode.NoContent, (await joined.PostAsync($"/api/v1/courses/{courseId}/join", null)).StatusCode);
         var file = await joined.GetAsync($"/api/v1/materials/{materialId}/content");
         Assert.Equal(HttpStatusCode.OK, file.StatusCode);

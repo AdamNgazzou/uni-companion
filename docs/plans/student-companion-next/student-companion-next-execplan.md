@@ -4,7 +4,7 @@
 
 Make the existing app a place students return to: find a course, understand its materials, work through a new exercise or lab, ask follow-up questions, and return to useful discussions when someone responds.
 
-Requested 23 October 2026 after the user tested the app and reported that it looks good. The user explicitly chose mixed written exercises and coding labs. This document plans the feature work; it does not authorize implementing every roadmap item. A subsequent instruction separately authorizes upgrading SDK 57 to SDK 58 now. That compatibility unit is the only active implementation unit in this turn.
+Requested 23 October 2026 after the user tested the app and reported that it looks good. The user explicitly chose mixed written exercises and coding labs. The user subsequently authorized implementing this roadmap with execution-planning, testing-strategy and build-loop. All locally implementable units are active scope, executed sequentially; remote push delivery still requires its real build/credential prerequisites. SDK 58 compatibility is complete locally.
 
 Preserve the approved cobalt/orange/Nunito/star identity. Keep Learn / Discuss / You; add contextual destinations instead of adding a tab for every feature. Success means a student can complete the journeys below, with reliable saved work, clear source scope, private accounts and honest AI feedback.
 
@@ -12,7 +12,7 @@ Preserve the approved cobalt/orange/Nunito/star identity. Keep Learn / Discuss /
 
 - Skills: execution-planning and testing-strategy, adapted to this repo's .NET/PostgreSQL/Expo stack; Impeccable for the UX assessment. TeamBoost, FastAPI, Mongo and ARQ conventions do not apply. No root AGENTS.md or docs/guides/testing-strategy.md exists; mobile/AGENTS.md governs native code.
 - Existing evidence: ../study-engine/study-engine-execplan.md and ../community/community-execplan.md. Retain those historical receipts.
-- Workspace main has no commits. Preserve all untracked work and ignored private data. No commit, push, PR, production deployment or emulator is authorized by this plan.
+- Initial baseline 96a68c7 was committed and pushed to main at the user’s request. Preserve private data; execute on feat/student-companion-next with local checkpoint commits. No force push, production deployment or emulator. The current build request authorizes the planned local implementation.
 - Keep backend/ai/gemini.py byte-for-byte unchanged (SHA-256 cc6120d2bec42986ec13be5b92655bedcd35bf23ccade0f9a80b29ead8942630). Reuse the private bridge, worker, bounded prompts, source permissions and generation limits. No model replacement or additional provider credentials.
 - Do not scrape the LMS again. Use the authorized local import. External push credentials/build accounts remain a prerequisite for real push delivery, not an assumed existing capability.
 - The user reports successful phone testing, but supplied no device versions or itemized acceptance results. Record this as positive user feedback; do not mark every old native checklist item passed.
@@ -24,7 +24,7 @@ Preserve the approved cobalt/orange/Nunito/star identity. Keep Learn / Discuss /
 - [x] Verify current Expo upgrade and notification constraints against official documentation.
 - [x] Write prioritized feature scope, implementation seams, acceptance and test strategy.
 - [x] Unit 0: SDK 58 migrated and locally verified; physical SDK 58 phone acceptance remains open.
-- [ ] Unit 1: remove navigation/copy confusion and connect course discussions.
+- [x] Unit 1: course preview/join, sections/source scope, direct discussions, clear tools and real resume item; local validation passed, native walkthrough pending.
 - [ ] Unit 2: My discussions, saved threads, drafts and basic community controls.
 - [ ] Unit 3: durable in-app activity inbox and notification preferences.
 - [ ] Unit 4: grounded written exercises and coding-lab briefs.
@@ -189,3 +189,21 @@ After that fix, make format and make check pass: .NET locked restore/format/buil
 Physical SDK 58 Expo Go session restoration, WebView/PDF, keyboard/Back and quiz acceptance are still pending. User's positive pre-upgrade phone feedback is retained but is not evidence for the upgraded runtime. SDK/development dependency audit reports 21 advisories; no incompatible forced audit fix is part of this compatibility unit. New roadmap features remain planned, not implemented. Browser startup outcome and final service state follow below.
 
 Final browser proof: Chromium at 390×844 loaded the SDK 58 app with HTTP 200 and zero page exceptions; welcome → sign-in navigation reached /auth with both inputs present and zero page exceptions. No account was created or user content changed. This is a startup/navigation smoke, not a repeat of the full authenticated study/forum QA or physical-phone acceptance. The verification Metro server was stopped for the user to run npm start in their own terminal; API/AI worker/database/mail remain running. No emulator, commit, push or deployment.
+
+## Active build-loop — 23 October 2026
+
+Plan state: usable_current_plan → update authorization and unit detail. Baseline 96a68c7 on main/origin/main; working branch feat/student-companion-next. Hook inventory: mobile/AGENTS.md governs Expo; root Makefile owns format/check/backend-test/bundle; root/mobile/backend READMEs own runtime; this plan owns checkpoints. No TeamBoost project, root AGENTS, PR template, mandatory PR/release workflow or production delivery hook governs this personal repo. Use local source review per meaningful unit and preserve current services; no production deployment or emulator. Ordinary local implementation and validation are authorized. Claude posture auto-on-trigger; optional availability does not gate progress.
+
+Mission anchor: complete the scoped local student journeys in Units 1–6, and prepare Unit 7 as far as actual credentials/build capability allows. Preserve authentication, privacy, source access, SDK 58 and approved identity. The source plan and this checkpoint own durable memory; no separate board or runtime goal needed. A unit passes technical checks, runtime checks and rendered quality checks separately. Native device evidence is requested only where the user device is necessary; continue independent work.
+
+Active unit 1: explicit metadata-only course preview and intentional joining; lesson grouping and source/index scope; direct course discussions and clear tool labels; real resume card. Allowed surfaces: courses API DTOs and tests; connected course/study/forum route state and types. Keep current protected course detail/PDF semantics; add authenticated preview metadata only. Do not expose raw source metadata in previews. Validation: real PostgreSQL preview/join/isolation checks; pure grouping/scope tests where meaningful; make format/check; exports; web preview/join/section/filter smoke and rendered inspection. Backend rebuild requires API restart before runtime verification. Worker need not restart for API/UI-only changes.
+
+Pinned regression: outsider can see catalogue preview but cannot fetch detail/PDF; intentional join unlocks original course; chapter scope names included files; unsupported files have an explanation; course Discuss opens filtered feed; existing auth, original PDF, saved study/quiz and anonymous forum regressions remain protected. Unit 1 stop conditions: irreversible/external action or actual source/credential ambiguity; do not pause for routine implementation decisions. Next units follow this document after unit validation/review receipt.
+
+### Unit 1 receipt and transition
+
+Done locally: intentional metadata preview/join, normalized chapter names with upstream private metadata omitted, indexed/page-count resource labels, actual file scope in study setup, course-filtered Discuss, familiar Summary/Quiz/Ask AI labels and a real last/running-session card. Tests: 47/47 real PostgreSQL; make format and final make check pass (9 Python/17 mobile tests, build/types/lint); fresh Android/web export passes. First parallel .NET runs collided on a shared generated manifest; serialized subsequent runs. First lint rejected effect-driven route state; replaced it with a route-driven keyed feed. An export exited 143 without a compiler error; the final rerun passed.
+
+Source review applied code-review to frozen local target; remediated stale null-path resource data and route state. Validated result at /tmp/skill-runs/code-review/mobile-project/local-feat-student-companion-next-20261023-101850Z. No unresolved fix-now finding. Chromium flows passed after the final route edit for explicit join, chapter projection, course discussions and source scope; inspected 390/320 screenshots, no overflow/page exceptions. Private evidence backend/.local/evidence/next. API restarted on 5080, worker and existing user Metro preserved. Two isolated QA accounts remain private for later unit validation and will be cleaned at closeout. No user data changed. Native acceptance remains open.
+
+Active Unit 2: My discussions/replies, owner-scoped bookmarks, thread following, edit/delete/resolved, drafts and basic moderation/blocking. Persistence/API ownership/anonymity is highest risk. Add indexed migrations and real PostgreSQL tests for own-anonymous discovery/non-disclosure, source access, edit/deletion idempotence, blocked visibility and report/admin refusal. Keep creation hashes independent of later edits/deletion; backfill old rows before cutover. Use tombstones for reply continuity. Next Unit 3 adds transactionally committed activity events, an independent dispatcher and preferences; do not publish notification side effects from uncommitted writes. Optional bounded Claude contract check is running.
