@@ -1,0 +1,23 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.env
+.env.*
+!.env.example
+mobile/android/
+mobile/ios/
+.impeccable/review/
+.claude/
+playwright-report/
+test-results/
+data/university-import/
+
+# .NET, private local backend state, Python/model caches
+**/bin/
+**/obj/
+**/__pycache__/
+**/.venv/
+backend/.local/
+backend/.env

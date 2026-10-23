@@ -1,0 +1,6 @@
+{
+  "prompt": "Production mobile app illustration asset, transparent background. Input image is character identity reference only; reproduce the original friendly tangerine-orange star character from Uni Companion, rounded asymmetrical five point star body, navy oval eyes and eyebrows, warm smile, short arms and cobalt-blue sneakers with white soles. A single full-body character holding a cobalt-blue spiral notebook under one arm and waving with the other. Confident professional consumer learning-app illustration with clean contours, subtle orange dimensional shading, thick confident navy details, matches reference. Centered large isolated character filling most of a square canvas, generous safe margin so nothing cropped, completely transparent background, no ground plane, no text, no logo, no UI, no other characters, no white rectangle. This is a reusable illustration for the approved React Native app, not a mockup screenshot.",
+  "tool": "built-in image generation",
+  "reference": "design/visuals-v2/01-learn.png",
+  "transparent_background": true
+}

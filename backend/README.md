@@ -1,0 +1,123 @@
+# Uni Companion backend
+
+.NET 10 API with ASP.NET Core Identity, EF Core/PostgreSQL, private content-addressed files, and an unchanged supplied Gemini helper behind a private Python adapter. The existing Expo app is in ../mobile and is not connected yet.
+
+## First run
+
+Install the .NET SDK version pinned in global.json. The setup in this workspace installed it in ~/.dotnet; scripts/dev.py discovers that location without modifying your shell configuration. Docker must be running.
+
+From the repository root (uv is available in this workspace):
+
+```bash
+uv venv backend/.venv
+uv pip sync --python backend/.venv/bin/python backend/ai/requirements.lock --require-hashes
+python3 backend/scripts/dev.py setup
+python3 backend/scripts/dev.py up
+python3 backend/scripts/dev.py migrate
+python3 backend/scripts/dev.py import
+python3 backend/scripts/dev.py serve
+```
+
+The API listens on http://localhost:5080. Development OpenAPI: /openapi/v1.json. Readiness: /health/ready. Email inbox: http://localhost:8025. Development uses a loopback-only mail sink, not real external email delivery. The API does not migrate the database automatically when starting.
+
+setup creates a random PostgreSQL password in ignored backend/.env with owner-only permissions. up starts only this project's PostgreSQL (port 55432) and mail inbox (1025/8025), capped at 384 MB and 64 MB. It does not affect unrelated containers. Stop these services with `python3 backend/scripts/dev.py down`; data is retained. Private files and Data Protection keys live in ignored backend/.local. Protect and retain these keys for stable app tokens; local keys are not encrypted at rest.
+
+## Accounts
+
+POST /api/v1/accounts/register with email, password, displayName. Passwords require 12–128 characters, upper/lowercase letters, a number, and a symbol. Registration always returns an accepted response for an eligible-format address, including duplicates. Open the confirmation email in the local inbox and follow its link. Then POST /api/v1/accounts/login with email and password.
+
+Native login returns Microsoft's opaque bearer accessToken (5 minutes) and refreshToken (14 days). Send `Authorization: Bearer <accessToken>` on protected requests. POST /refresh with refreshToken to renew. These are not JWTs and refresh tokens are not single-use. Logout on a device means clearing its local credentials. POST /logout-all invalidates all account tokens immediately. Password reset/change, disablement, and security-stamp updates also invalidate access and refresh paths. The app checks active status/security stamps on every authenticated request.
+
+Browser sign-in uses POST /api/v1/accounts/web/login and /web/logout. It returns no JavaScript tokens: the encrypted uni.session cookie is HTTP-only, SameSite=Strict, scoped to /api/v1, valid for 14 days with sliding expiration, and Secure in production. Set Accounts__WebOrigin to the exact HTTPS UI origin (falls back to Accounts__PublicBaseUrl); development also allows localhost:8081 and 127.0.0.1:8081. Login/logout and authenticated cookie mutations require that Origin. Host UI and /api/v1 on the same origin. The Metro development proxy forwards only this application cookie. Logout clears this browser cookie; logout-all/password changes/disablement invalidate both browser and native sessions. This app cookie is unrelated to the unchanged Gemini helper.
+
+Available account routes: register, login, refresh, confirm-email (GET), resend-confirmation, forgot-password, reset-password, change-password, me (GET/PATCH displayName), logout-all. The default account rate limit is 20 requests per minute per client IP, plus Identity lockout after 5 failed password attempts for 15 minutes. Unknown JSON properties are rejected, including self-assigned roles.
+
+Admin bootstrap grants the role to an already registered/confirmed user. It sets a new security stamp; sign in again afterward:
+
+```bash
+python3 backend/scripts/dev.py admin --email your-address@example.com
+```
+
+There is no public role assignment or admin demo switch in this API. Anyone registering initially belongs to Horizon University; enrollment verification is deliberately not implemented.
+
+## Courses and materials
+
+Authenticated users can list/create courses. A new student course retains its creator; creator membership is automatic. Join via POST /api/v1/courses/{id}/join. Course detail and GET /api/v1/materials/{id}/content require membership or admin. Downloads support byte ranges. PUT /api/v1/courses/{id}/recognition requires Admin and never changes authorship.
+
+The import command consumes ../data/university-import/catalogue.json and its local files. This source snapshot is deliberately ignored by git; a fresh clone must obtain an authorized copy separately. It verifies every hash/size, copies files into private content-addressed storage, and transactionally upserts courses/materials/versions. The same snapshot can be rerun safely, including concurrent attempts. Original module/chapter/outcome metadata is retained. Attachments are never executed or served as a public directory.
+
+## Validation
+
+```bash
+make backend-check
+python3 backend/scripts/dev.py test
+```
+
+backend-check restores/builds, verifies .NET formatting, and runs offline Python contract tests including an exact helper hash check. test runs API integration tests on disposable, uniquely named companion_test_* databases in the local PostgreSQL instance. It requires `up`; never point it at production. The corpus integration test uses the ignored local snapshot. Existing root make format/check also include mobile checks; native phone testing remains separate.
+
+To manage migrations, with ~/.dotnet on PATH, run from backend:
+
+```bash
+dotnet tool restore
+dotnet ef migrations add Name --project src/UniCompanion.Infrastructure --startup-project src/UniCompanion.Api
+```
+
+## Local document retrieval
+
+```bash
+python3 backend/scripts/dev.py index
+python3 backend/scripts/dev.py evaluate
+```
+
+index extracts and embeds current PDFs sequentially, preserving the original PDF page numbers. It skips already indexed material versions. A quantized multilingual MiniLM model runs on one CPU thread with 384-dimensional vectors and token-aware chunks below its 128-token limit. We pin both the model repository revision and Python dependency hashes. The first run downloads public model files into private backend/.local/models; no model API key is needed. The measured initial embedding probe peaked at about 683 MB RSS. Processes unload afterward to preserve RAM. API and CLI bridge calls share a filesystem lease so normal index/evaluate/search commands do not load separate models concurrently.
+
+POST /api/v1/courses/{id}/search with `{ "question": "..." }` returns up to 8 source passages with chunkId, materialId, versionId, fileName, page, text, and rank score. Membership/admin permission is enforced in the API and again in SQL before ranking. PostgreSQL full-text and pgvector cosine rankings are combined with reciprocal rank fusion; obsolete material versions are excluded. Vectors are stored as real[] and cast to pgvector in the ranking query. The current corpus is small enough to scan permitted candidates; approximate vector indexing is a later measured optimization.
+
+The fixed evaluation contains 12 answerable French/English questions with expected document pages, plus 8 insufficient-evidence/access scenarios. evaluate measures source recall@5 only (target at least 10/12), not answer correctness. API tests separately prove member isolation and obsolete-version exclusion. Search remains a retrieval endpoint. The study-job API below adds validated generated answers, summaries and quizzes.
+
+Never edit ai/gemini.py. No Gemini cookie, key, or upstream session is configured. ai/bridge.py provides error handling around it; deterministic tests never call Google. The live planning spike returned schema-valid JSON, but provider availability is not guaranteed. Generation runs only in the separate durable study worker, using the supplied helper unchanged.
+
+## Deployment boundary
+
+This is local development. Before hosting, configure HTTPS, trusted public email-confirmation URL, actual TLS SMTP delivery, private persistent storage/keys and backups, allowed hosts, and phone transport. Do not expose PostgreSQL or the mail inbox. Do not trust forwarded client IPs from arbitrary proxies. No production deployment has been performed.
+
+## Durable study sessions
+
+After migration, run the API and the worker in separate terminals:
+
+```bash
+python3 backend/scripts/dev.py serve
+python3 backend/scripts/dev.py worker
+```
+
+The worker must be running for queued sessions to finish. Ctrl+C stops either process. A clean worker shutdown puts active work back into retry_wait; a crash is recovered after its 120-second lease expires. Keep the same private .local directory across restarts. One child AI process runs at a time, with a 10-minute/12-provider-call/3-execution budget per job. No Redis or external Python server is needed.
+
+POST /api/v1/courses/{id}/study-jobs with an Idempotency-Key header and one of:
+
+```json
+{"kind":"answer","question":"What is classification?","language":"en"}
+{"kind":"summary","materialId":"<server UUID>","language":"en"}
+{"kind":"quiz","materialId":"<server UUID>","language":"fr","count":10}
+```
+
+A material may also scope an answer; chapterId scopes a summary/quiz to the course's lesson ID. Counts are 5 or 10. Poll GET /api/v1/study-jobs/{id}; GET /study-jobs lists the account's saved sessions. Successful results are persisted, source-version bound and reused for identical requests. Historical results carry stale=true and retain authorized access to their original PDFs. Cancel through POST /study-jobs/{id}/cancel. Limits: 5 new jobs/minute, 50/day, 2 pending/account and 20 globally. Oversized or unindexed summary/quiz scopes fail explicitly.
+
+Quiz results omit correct choices and explanations. POST /quizzes/{jobId}/attempts with its own Idempotency-Key and exactly one {questionId,optionId} per question. The server grades from the immutable definition and returns corrections; client-provided score fields are rejected. GET /quiz-attempts?page=1 and /quiz-attempts/{id} expose only the current owner's authorized history.
+
+Original PDFs: GET /materials/{id}/versions/{versionId}/content, including byte ranges. Extracted text: GET /materials/{id}/versions/{versionId}/pages/{physicalPage}. Authentication and live course membership/admin permission are checked on every read. Model-provided IDs and exact source quotes are validated; source metadata always comes from the database. Citation validation does not establish factual correctness by itself.
+
+Opt-in live quality exercise (API need not run, worker must run):
+
+```bash
+python3 backend/scripts/dev.py evaluate-study
+```
+
+It uses the unchanged gold manifest, creates an isolated temporary local account, respects admission limits, writes the private report backend/.local/study-evaluation.json, then removes its temporary account/jobs. The report includes private course excerpts and quiz keys for source review; do not commit it. Ordinary tests never contact the live provider.
+
+## Community and sample activity
+
+Authenticated routes under `/api/v1/community/posts`: GET feed (`sort=recent|top`, optional `courseId`, `kind`, `page`, `limit` up to 30); POST thread; GET `/{id}` and `/{id}/replies`; POST `/{id}/replies`; PUT `/{id}/vote` with `value` -1, 0 or 1; DELETE `/{id}` for its author/admin. Threads accept title (1–180), body (1–8000), kind (Question/Study tip/Discussion), optional courseId, and isAnonymous. Replies accept body and isAnonymous. Creation requires a stable Idempotency-Key; a changed payload with the same key returns 409. Writes are limited to 30/minute/account. All current accounts share one campus; reading discussions does not grant course-material access. Replies are chronological, paged 30 at a time, and limited to one level.
+
+Public projections omit author IDs and hide names for anonymous content. OP markers only connect replies with the same anonymity mode as their root, avoiding identity disclosure through mixed named/anonymous replies. Ownership remains stored privately. Moderation/reporting UI is outside this local demo.
+
+Run `python3 backend/scripts/dev.py migrate`, then `python3 backend/scripts/dev.py seed-community`. The latter is Development-only, uses deterministic sample IDs and a transaction/lock, adds missing seed rows without rewriting real content, and sends no emails. Eight fictional identities have no password, no confirmation and IsActive=false. Ten threads, 26 replies and 178 votes reference existing course labels where available; no imported courses are modified. Missing courses fall back to Campus life. UI labels sample content explicitly. Rerunning restores missing sample activity, so it is not a cleanup command.

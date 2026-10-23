@@ -1,0 +1,23 @@
+name: uni-companion
+services:
+  database:
+    image: pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
+    environment:
+      POSTGRES_USER: companion
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run python3 scripts/dev.py setup first}
+      POSTGRES_DB: companion
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["database:/var/lib/postgresql/data"]
+    mem_limit: 384m
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=40"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U companion -d companion"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  mail:
+    image: axllent/mailpit:v1.29.2@sha256:030f06031ce5c60913ac9363da1ab0d4be6fd2a78147dd0e1ca0fcac665d6b34
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
+    mem_limit: 64m
+volumes:
+  database:

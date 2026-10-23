@@ -1,0 +1,104 @@
+{
+  "inspectedOn": "2026-10-21",
+  "scope": "Read-only course/material discovery for the student's enrolled catalogue. No application/backend implementation or source-system writes.",
+  "frontend": "https://learn.horizon-university.tn",
+  "coursePageRoute": "/courses/{courseId}",
+  "apiBase": "https://europe-west3-eduerphorizon.cloudfunctions.net/api",
+  "authentication": "User-supplied Firebase ID token used transiently in Authorization header. Token not stored in project files.",
+  "verifiedEndpoints": [
+    "GET /lms/courses?page=1&limit=25",
+    "GET /lms/courses/{courseId}/modules",
+    "GET /lms/courses/{courseId}/sections",
+    "GET /lms/courses/{courseId}/learning-outcomes",
+    "GET /lms/lessons/{lessonId}/components"
+  ],
+  "catalogue": {
+    "totalEnrolledCourses": 12,
+    "semester": 5,
+    "academicYear": "2026/2027"
+  },
+  "hierarchy": "Course -> module -> lesson/chapter (returned by sections endpoint) -> component -> file/link or folder files",
+  "files": {
+    "singleFileField": "component.config.fileUrl",
+    "folderFileField": "component.config.files[].fileUrl",
+    "confirmedStorageHost": "firebasestorage.googleapis.com",
+    "accessUrls": "Download URLs contain access tokens. Preserve privately when importing; never publish their raw query strings. Do not attach the API bearer to the storage request."
+  },
+  "samples": [
+    {
+      "course": "Machine Learning",
+      "modules": 1,
+      "chapters": 2,
+      "outcomes": 6,
+      "observedContent": [
+        "lecture PDFs",
+        "lab PDF",
+        "CSV datasets",
+        "folder attachments",
+        "another dataset attachment"
+      ]
+    },
+    {
+      "course": "Développement Mobile",
+      "modules": 1,
+      "chapters": 6,
+      "outcomes": 2,
+      "pdfComponents": 5,
+      "urlComponents": 1,
+      "observedContent": [
+        "Chapters 1 and 2",
+        "Lab 01 -- Environement configuration",
+        "Lab 02 -- Money Converter",
+        "Chapters 3 and 4",
+        "List of Projects",
+        "Lab 02 solution link"
+      ]
+    }
+  ],
+  "pdfInspection": {
+    "title": "Chapter 1 Introduction to ML",
+    "bytes": 379007,
+    "pages": 18,
+    "pagesWithExtractableText": 18,
+    "extractedCharacters": 8267,
+    "conclusion": "This sample supports page-level text extraction without OCR. Other documents still need inspection."
+  },
+  "confirmedInfrastructure": [
+    "Firebase ID-token authentication",
+    "Google Cloud Functions API hostname",
+    "Firebase Storage file downloads"
+  ],
+  "unverified": [
+    "Backend application language/framework",
+    "Underlying database",
+    "Ongoing import credential/refresh strategy"
+  ],
+  "importImplications": [
+    "Use structured API reads rather than DOM scraping.",
+    "Preserve stable source ids, source ordering, original titles, academic metadata and learning outcomes.",
+    "Support folder attachments, datasets and links alongside PDFs.",
+    "Keep import work separate from university account progress or submissions."
+  ],
+  "downloadSnapshot": {
+    "courses": 12,
+    "fileReferences": 35,
+    "downloadedFiles": 35,
+    "pdfs": 27,
+    "bytes": 20839326,
+    "fileTypes": {
+      ".pdf": 27,
+      ".csv": 3,
+      ".xml": 1,
+      ".xsd": 1,
+      ".xsl": 1,
+      ".py": 2
+    },
+    "pdfPages": 398,
+    "pdfPagesWithText": 398,
+    "missingDownloads": 0,
+    "workspaceFolder": "data/university-import/",
+    "windowsFolder": "/mnt/c/Users/LENOVO/Downloads/Uni Companion Materials",
+    "verification": "All 35 originals and Windows copies match recorded SHA-256 hashes.",
+    "firebaseAccess": "Full supplied download URLs work without bearer authentication. Removing the query download token from the tested PDF returned HTTP 403."
+  }
+}

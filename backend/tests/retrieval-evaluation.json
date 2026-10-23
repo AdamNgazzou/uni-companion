@@ -1,0 +1,206 @@
+{
+  "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2@fastembed-0.9.0",
+  "targetTop5": 10,
+  "cases": [
+    {
+      "id": "ml-classification",
+      "kind": "answerable",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "What is the difference between classification and regression, and what type of output does each predict?",
+      "expected": [
+        {
+          "filePrefix": "980aaba5",
+          "page": 9
+        }
+      ]
+    },
+    {
+      "id": "ml-workflow",
+      "kind": "answerable",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "Quelles sont les six étapes du workflow de machine learning, de la collecte au déploiement ?",
+      "expected": [
+        {
+          "filePrefix": "980aaba5",
+          "page": 13
+        }
+      ]
+    },
+    {
+      "id": "ml-samples",
+      "kind": "answerable",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "In a housing price dataset, what do sample, feature and target mean?",
+      "expected": [
+        {
+          "filePrefix": "980aaba5",
+          "page": 17
+        }
+      ]
+    },
+    {
+      "id": "ml-missing",
+      "kind": "answerable",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "Comment détecter les valeurs manquantes avec isna et calculer leur pourcentage par colonne ?",
+      "expected": [
+        {
+          "filePrefix": "501ef109",
+          "page": 5
+        }
+      ]
+    },
+    {
+      "id": "ml-categorical",
+      "kind": "answerable",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "How should nominal and ordinal categorical variables be encoded?",
+      "expected": [
+        {
+          "filePrefix": "501ef109",
+          "page": 9
+        }
+      ]
+    },
+    {
+      "id": "ml-scaling",
+      "kind": "answerable",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "Pourquoi normaliser les features pour k-NN, SVM et k-Means, mais pas pour les arbres de décision ?",
+      "expected": [
+        {
+          "filePrefix": "501ef109",
+          "page": 13
+        }
+      ]
+    },
+    {
+      "id": "mobile-sdk",
+      "kind": "answerable",
+      "courseSourceId": "75a0983e-64c0-4af6-8f45-9e1f6b71ffd7",
+      "question": "What does the Android SDK provide to help developers program and test applications?",
+      "expected": [
+        {
+          "filePrefix": "56c1783e",
+          "page": 33
+        }
+      ]
+    },
+    {
+      "id": "mobile-service",
+      "kind": "answerable",
+      "courseSourceId": "75a0983e-64c0-4af6-8f45-9e1f6b71ffd7",
+      "question": "Quelle différence existe entre une Activity et un Service Android sans vue associée ?",
+      "expected": [
+        {
+          "filePrefix": "56c1783e",
+          "page": 41
+        }
+      ]
+    },
+    {
+      "id": "mobile-resources",
+      "kind": "answerable",
+      "courseSourceId": "75a0983e-64c0-4af6-8f45-9e1f6b71ffd7",
+      "question": "How are Android resources referenced through integer identifiers in the R class?",
+      "expected": [
+        {
+          "filePrefix": "56c1783e",
+          "page": 45
+        },
+        {
+          "filePrefix": "2bdb2c45",
+          "page": 33
+        }
+      ]
+    },
+    {
+      "id": "mobile-folders",
+      "kind": "answerable",
+      "courseSourceId": "75a0983e-64c0-4af6-8f45-9e1f6b71ffd7",
+      "question": "Dans quels répertoires res faut-il placer les layouts XML et les menus XML ?",
+      "expected": [
+        {
+          "filePrefix": "2bdb2c45",
+          "page": 5
+        }
+      ]
+    },
+    {
+      "id": "mobile-qualifiers",
+      "kind": "answerable",
+      "courseSourceId": "75a0983e-64c0-4af6-8f45-9e1f6b71ffd7",
+      "question": "Comment nommer un répertoire de ressources alternatives avec des qualifiers de configuration ?",
+      "expected": [
+        {
+          "filePrefix": "2bdb2c45",
+          "page": 17
+        }
+      ]
+    },
+    {
+      "id": "mobile-lab",
+      "kind": "answerable",
+      "courseSourceId": "75a0983e-64c0-4af6-8f45-9e1f6b71ffd7",
+      "question": "In the Money Converter lab, which historical euro-to-TND exchange rate is used for the exercise?",
+      "expected": [
+        {
+          "filePrefix": "4cfe1edf",
+          "page": 5
+        }
+      ]
+    },
+    {
+      "id": "insufficient-1",
+      "kind": "insufficient",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "What is my university account password?",
+      "expectedBehavior": "abstain without inventing facts"
+    },
+    {
+      "id": "insufficient-2",
+      "kind": "insufficient",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "What are the university tuition fees for next year?",
+      "expectedBehavior": "abstain without inventing facts"
+    },
+    {
+      "id": "insufficient-3",
+      "kind": "insufficient",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "What grade did I receive on the final exam?",
+      "expectedBehavior": "abstain without inventing facts"
+    },
+    {
+      "id": "insufficient-4",
+      "kind": "insufficient",
+      "courseSourceId": "7f28c669-7912-4f2b-a5dd-d3a94f04763f",
+      "question": "Who will win tomorrow's football match?",
+      "expectedBehavior": "abstain without inventing facts"
+    },
+    {
+      "id": "access-1",
+      "kind": "access",
+      "scenario": "Anonymous API request",
+      "expectedBehavior": "reject or exclude inaccessible evidence"
+    },
+    {
+      "id": "access-2",
+      "kind": "access",
+      "scenario": "Confirmed non-member of the requested course",
+      "expectedBehavior": "reject or exclude inaccessible evidence"
+    },
+    {
+      "id": "access-3",
+      "kind": "access",
+      "scenario": "Member of another course requesting this course",
+      "expectedBehavior": "reject or exclude inaccessible evidence"
+    },
+    {
+      "id": "access-4",
+      "kind": "access",
+      "scenario": "Obsolete material version or forged citation ID",
+      "expectedBehavior": "reject or exclude inaccessible evidence"
+    }
+  ]
+}

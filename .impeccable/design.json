@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "source": "mobile/src/theme.ts",
+  "authority": [
+    "design/visuals-v2",
+    "design/visuals-v3"
+  ],
+  "colors": {
+    "primary": "#075BFF",
+    "primaryPressed": "#0343C2",
+    "primaryContainer": "#ECF2FF",
+    "ink": "#10153D",
+    "secondary": "#626D8C",
+    "divider": "#E5EAF3",
+    "canvas": "#F8FAFF",
+    "accent": "#FF982E",
+    "success": "#14754D",
+    "error": "#BD354A"
+  },
+  "typography": {
+    "family": "Nunito",
+    "bodySize": 16,
+    "bodyLineHeight": 24,
+    "titleSize": 21,
+    "headingSize": 27,
+    "featureSize": 32
+  },
+  "platform": "android",
+  "visualAcceptance": "pending Expo Go walkthrough"
+}

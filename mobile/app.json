@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Uni Companion",
+    "slug": "uni-companion",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/mascot.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFFFFF",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.adamngazzou.unicompanion"
+    },
+    "android": {
+      "package": "com.adamngazzou.unicompanion",
+      "softwareKeyboardLayoutMode": "resize",
+      "predictiveBackGestureEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/mascot.png",
+        "backgroundColor": "#ECF2FF"
+      }
+    },
+    "web": {
+      "favicon": "./assets/mascot.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-document-picker",
+      "expo-router",
+      "expo-secure-store",
+      "expo-asset",
+      "expo-sharing"
+    ],
+    "scheme": "unicompanion"
+  }
+}

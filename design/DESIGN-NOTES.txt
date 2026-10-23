@@ -1,0 +1,58 @@
+UNI COMPANION — VISUAL EXPLORATION
+
+Selected direction
+The user endorsed the playful cobalt-blue/orange direction after rejecting the first editorial design. Keep the original orange star character, rounded sans-serif headings, readable body text, white surfaces, navy ink, and tactile primary buttons. Duolingo is a craft reference; this is an original identity.
+
+Scope
+React Native mobile app and .NET backend for one university, built by one developer. These images explore appearance and flows. They are not executable screens or final interaction specifications. All names, documents, academic content, counts, dates, and university details in the mockups are illustrative.
+
+Core navigation
+Learn: courses, materials, summaries, source-grounded questions, quizzes.
+Discuss: course-filtered feed, threads, replies, post composer.
+You: profile, saved items, preferences.
+Welcome and account access precede department/year and course selection.
+Focused reading, composing, and quiz sessions should show only navigation needed for the current task.
+
+Main screen inventory (20)
+01 Welcome
+02 Login
+03 Register
+04 Verify email
+05 Password recovery/reset flow
+06 Department and year selection
+07 Course selection
+08 Home / my courses
+09 Course space
+10 Document viewer
+11 Summary and course Q&A (related views)
+12 Quiz setup
+13 Quiz session
+14 Results and review
+15 Community feed
+16 Thread and replies
+17 Create/edit post
+18 Profile
+19 Saved items
+20 Settings
+
+Additional views and states
+PDF upload, document processing, correct/incorrect quiz feedback, form validation, empty courses, network errors, and account recovery confirmations belong to these flows. A recovery request and setting a new password are separate steps of the same flow; the generated batch shows the request/confirmation step. A new-password form still needs a detailed design before implementation.
+
+Design refinements before implementation
+- Keep all course materials accessible. Ignore the decorative locked lessons in the early home/course mockup.
+- Reduce mascot repetition; use it mainly in welcome, setup, quiz feedback, and meaningful empty states.
+- Keep document text and discussion bodies comfortable to read. UI decoration must not compete with content.
+- Scale large headings down on small phones and during text entry. Respect Android insets, font scaling, keyboard avoidance, and scrolling.
+- Disable verification until the code is complete. Resend availability and countdown must agree.
+- Enable posting once required fields are valid; the populated composer mockup incorrectly shows a disabled button. Character counts must match the actual text. Composing belongs to Discuss, not the Learn tab shown by the generator.
+- Use an accessible success or error message alongside colour for answer feedback.
+- Define error, loading, empty, disabled, and offline states in the working prototype.
+- Keep question/answer controls stable when feedback appears; make room for longer questions and explanations.
+- Anonymous posting hides identity from classmates; authorized moderation remains accountable. The precise policy is a product decision to finalize. Never reveal anonymous posting history publicly.
+- Uploaded document visibility and permissions must be explicit. The shown course-shared upload is a proposal to confirm before backend implementation.
+- Cite actual source passages. Generated sample answers and PDFs are design content, not validated educational material.
+- Authentication method, password policy, university verification, legal links, support channels, and user-data deletion behaviour need implementation decisions. Mockup controls do not establish backend policy.
+- Final typography, mascot assets, icon set, light/dark tokens, motion, and screen measurements should be consolidated before coding.
+
+Image generation
+Created with the built-in image generation tool. Exact prompts accompany each generated image in .png.json sidecars. Expanded mockups use the endorsed home/course board as a style reference. Layouts remain subject to user review.
