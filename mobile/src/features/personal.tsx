@@ -14,6 +14,27 @@ export function ProfileScreen() {
       <T>{profile?.email}</T>
       <Section title="Make progress your way" />
       <Row
+        title="My discussions"
+        detail="Your threads and replies, including anonymous posts"
+        icon="MessageCircle"
+        onPress={() => router.push('/my-discussions')}
+      />
+      <Row
+        title="Saved items"
+        detail="Bookmarked discussions and resources"
+        icon="Bookmark"
+        onPress={() => router.push('/saved-items')}
+      />
+      {profile?.roles.includes('Admin') && (
+        <Row
+          title="Community reports"
+          detail="Review reported contributions"
+          icon="Flag"
+          onPress={() => router.push('/reports')}
+        />
+      )}
+
+      <Row
         title="Study history"
         detail="Saved explanations, summaries and quizzes"
         icon="History"
@@ -77,6 +98,12 @@ export function SettingsScreen() {
       <Field label="Your name" value={name} onChangeText={setName} maxLength={80} />
       <Button label="Save name" onPress={() => void save()} disabled={!name.trim()} busy={busy} />
       {!!notice && <Notice tone="success">{notice}</Notice>}
+      <Row
+        title="Hidden participants"
+        detail="Manage hidden profiles and anonymous contributions"
+        icon="EyeOff"
+        onPress={() => router.push('/blocked')}
+      />
       <Section title="Change password" />
       <Field
         label="Current password"

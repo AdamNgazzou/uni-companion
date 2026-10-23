@@ -87,9 +87,11 @@ public sealed class CommunityTests(ApiFixture app) : IClassFixture<ApiFixture>
         nested.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
         Assert.Equal(HttpStatusCode.NotFound, (await stranger.SendAsync(nested)).StatusCode);
         (await writer.DeleteAsync($"/api/v1/community/posts/{id}")).EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.NotFound, (await writer.GetAsync($"/api/v1/community/posts/{id}")).StatusCode);
+        var tombstone = await writer.GetFromJsonAsync<JsonElement>($"/api/v1/community/posts/{id}");
+        Assert.True(tombstone.GetProperty("isDeleted").GetBoolean());
+        Assert.Equal("This contribution was deleted.", tombstone.GetProperty("body").GetString());
         await using var scope = app.Services.CreateAsyncScope();
-        Assert.False(await scope.ServiceProvider.GetRequiredService<AppDbContext>().CommunityPosts.AnyAsync(p => p.Id == replyId));
+        Assert.True(await scope.ServiceProvider.GetRequiredService<AppDbContext>().CommunityPosts.AnyAsync(p => p.Id == replyId));
     }
     [Fact]
     public async Task FeedFiltersSortsAndPaginatesWithoutGrantingPrivateMaterialAccess()

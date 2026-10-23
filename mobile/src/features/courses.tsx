@@ -25,6 +25,7 @@ import type { Course, CourseDetail, Job } from '../api/types';
 import { useResource } from './hooks';
 import { resourceGroups, resourceFormat } from './course-resources';
 import { pending } from '../api/types';
+import { BookmarkControl } from './forum-controls';
 export function ResourceState({
   loading,
   error,
@@ -353,6 +354,7 @@ export function MaterialScreen() {
           }
         />
       ))}
+      <BookmarkControl kind="material" id={params.id} />
       <Notice>
         AI study aids can miss nuance. Use the linked original pages to check your understanding.
       </Notice>

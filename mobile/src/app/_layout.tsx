@@ -36,6 +36,10 @@ function Routes() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="thread" />
         <Stack.Screen name="compose" />
+        <Stack.Screen name="my-discussions" />
+        <Stack.Screen name="saved-items" />
+        <Stack.Screen name="blocked" />
+        <Stack.Screen name="reports" />
       </Stack.Protected>
     </Stack>
   );

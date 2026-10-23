@@ -23,16 +23,50 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
 
     public DbSet<CommunityPost> CommunityPosts => Set<CommunityPost>();
     public DbSet<CommunityVote> CommunityVotes => Set<CommunityVote>();
+    public DbSet<ThreadSubscription> ThreadSubscriptions => Set<ThreadSubscription>();
+    public DbSet<SavedItem> SavedItems => Set<SavedItem>();
+    public DbSet<CommunityBlock> CommunityBlocks => Set<CommunityBlock>();
+    public DbSet<CommunityReport> CommunityReports => Set<CommunityReport>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
         base.OnModelCreating(model);
+        model.Entity<ThreadSubscription>(e =>
+        {
+            e.HasKey(x => new { x.ThreadId, x.OwnerId });
+            e.HasOne<CommunityPost>().WithMany().HasForeignKey(x => x.ThreadId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<SavedItem>(e =>
+        {
+            e.Property(x => x.Kind).HasMaxLength(20);
+            e.HasIndex(x => new { x.OwnerId, x.Kind, x.TargetId }).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.CreatedAt, x.Id });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<CommunityBlock>(e =>
+        {
+            e.HasIndex(x => new { x.OwnerId, x.BlockedUserId, x.IsAnonymous }).IsUnique();
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.BlockedUserId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<CommunityReport>(e =>
+        {
+            e.Property(x => x.Reason).HasMaxLength(1000);
+            e.Property(x => x.State).HasMaxLength(20);
+            e.HasIndex(x => new { x.PostId, x.ReporterId }).IsUnique();
+            e.HasIndex(x => new { x.State, x.CreatedAt });
+            e.HasOne<CommunityPost>().WithMany().HasForeignKey(x => x.PostId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.ReporterId).OnDelete(DeleteBehavior.Cascade);
+        });
         model.Entity<CommunityPost>(e =>
         {
             e.Property(x => x.Title).HasMaxLength(180);
             e.Property(x => x.Body).HasMaxLength(8000);
             e.Property(x => x.Kind).HasMaxLength(20);
             e.Property(x => x.RequestKey).HasMaxLength(100);
+            e.Property(x => x.RequestHash).HasMaxLength(64);
+            e.HasIndex(x => new { x.AuthorId, x.CreatedAt, x.Id });
             e.HasIndex(x => new { x.AuthorId, x.RequestKey }).IsUnique();
             e.HasIndex(x => new { x.ParentId, x.CreatedAt });
             e.HasIndex(x => new { x.CourseId, x.CreatedAt });

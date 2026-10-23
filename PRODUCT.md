@@ -32,7 +32,7 @@ Combine course study tools with course discussions: students can study summaries
 - React Native implementation is authorized. The mobile app is now connected to the local backend; phone testing happens in Expo Go after coding. Do not start an emulator because of RAM constraints.
 - AI-backed study sessions provide grounded answers, headed summaries and server-graded quizzes with original-page citations.
 - The admin curates university courses. Students may create labelled courses with visible authorship; the admin can recognise those courses without changing who created them.
-- Community now persists campus/course threads, one-level replies and votes. Server responses hide anonymous names/IDs and avoid OP identity linkage across anonymity modes. Development-only sample activity is explicitly labelled; moderation/reporting tools, enrollment verification and uploads remain later work.
+- Community now persists campus/course threads, one-level replies and votes. Server responses hide anonymous names/IDs and avoid OP identity linkage across anonymity modes. Development-only sample activity is explicitly labelled; own-content history, bookmarks, edit/delete, follow/mute, helpful replies, scoped hiding and basic reporting/admin review are implemented locally. Enrollment verification, uploads and notifications remain later work.
 
 ## Brand Commitments
 
@@ -42,7 +42,7 @@ The user rejected the initial ivory, forest-green, serif editorial mockups as ge
 
 ## Evidence on Hand
 
-The Expo SDK 57 mobile app and playful design are approved and connected to the .NET backend. A private import has 12 courses and 35 attachments, including 27 PDFs, 398 text pages and 814 indexed passages. Retrieval source recall remains 10/12 with honest abstentions. Real accounts, private materials, durable study sessions, quizzes and community persistence are implemented locally; production hosting and physical-phone acceptance remain pending. The community development seed adds eight disabled fictional identities, ten threads, 26 replies and 178 votes without modifying real users. Current execution evidence: docs/plans/study-engine/study-engine-execplan.md and docs/plans/community/community-execplan.md.
+The Expo SDK 58 mobile app and playful design are approved and connected to the .NET backend. A private import has 12 courses and 35 attachments, including 27 PDFs, 398 text pages and 814 indexed passages. Retrieval source recall remains 10/12 with honest abstentions. Real accounts, private materials, durable study sessions, quizzes and community persistence are implemented locally; production hosting and physical-phone acceptance remain pending. The community development seed adds eight disabled fictional identities, ten threads, 26 replies and 178 votes without modifying real users. Current execution evidence: docs/plans/study-engine/study-engine-execplan.md and docs/plans/community/community-execplan.md.
 
 ## Product Principles
 

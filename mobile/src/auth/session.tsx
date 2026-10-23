@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../api/runtime';
 import { ApiError, errorText } from '../api/client';
 import { drafts } from '../study/draft-runtime';
+import { composerDrafts } from '../community/draft-runtime';
 import type { Profile } from '../api/types';
 type Session = {
   profile: Profile | null;
@@ -31,7 +32,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     api.onInvalidSession = () => {
       setProfile(null);
-      void drafts.clear().catch(() => {});
+      void Promise.allSettled([drafts.clear(), composerDrafts.clear()]);
     };
     // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronize the external secure store on mount
     void restore();
@@ -41,14 +42,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
   async function login(email: string, password: string) {
     setProfile(null);
-    await drafts.clear();
+    await Promise.all([drafts.clear(), composerDrafts.clear()]);
     await api.signIn(email, password);
     setProfile(await api.request<Profile>('/accounts/me'));
     setError('');
   }
   async function logout() {
     setProfile(null);
-    const results = await Promise.allSettled([drafts.clear(), api.signOut()]);
+    const results = await Promise.allSettled([
+      drafts.clear(),
+      composerDrafts.clear(),
+      api.signOut(),
+    ]);
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') {
       setError(errorText(failure.reason));

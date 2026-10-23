@@ -106,9 +106,36 @@ export type CommunityPost = {
   authorName: string;
   isMine: boolean;
   isOriginalPoster: boolean;
+  editedAt?: string;
+  isDeleted: boolean;
+  acceptedReplyId?: string;
   score: number;
   myVote: number;
   replyCount: number;
   createdAt: string;
 };
 export type CommunityPage = { data: CommunityPost[]; total: number; page: number; limit: number };
+export type SavedItem = {
+  id: string;
+  kind: 'thread' | 'material';
+  targetId: string;
+  title: string;
+  courseId?: string;
+  currentVersionId?: string;
+  contentType?: string;
+};
+export type MyDiscussionPage = {
+  data: { post: CommunityPost; threadId: string; threadTitle: string; replyPage: number }[];
+  total: number;
+  page: number;
+  limit: number;
+};
+export type Report = {
+  id: string;
+  postId: string;
+  threadId: string;
+  title: string;
+  body: string;
+  reason: string;
+  createdAt: string;
+};

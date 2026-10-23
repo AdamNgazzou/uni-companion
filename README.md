@@ -29,8 +29,8 @@ Study jobs require the separate worker. Closing the app leaves jobs running; reo
 
 - Learn: discover/join courses, read original PDFs, ask questions, summarise a document/chapter and practise 5/10-question English/French quizzes.
 - Study: readable notes with topic headings, expandable source excerpts, contextual history, and PDF zoom/pan.
-- You: edit your name, change your password, revisit study sessions and quiz corrections, or retry missed questions.
-- Discuss: persisted campus/course threads, replies, up/down/remove votes, Recent/Top and kind/course filters, plus profile or anonymous posting. Fictional sample content is labelled; uploads, reports/moderation tools and notifications remain later work.
+- You: edit your name/password, revisit study sessions and quiz corrections, retry missed questions, find your threads/replies and bookmarked resources/discussions.
+- Discuss: persisted campus/course threads, replies, up/down/remove votes, Recent/Top and kind/course filters, plus profile or anonymous posting. Fictional sample content is labelled. Follow/mute threads, edit/delete your contributions, select a helpful reply, report content and hide participants. Basic report review is admin-only. Uploads and notifications remain later work.
 - Admin: course import/bootstrap and recognition are backend operations. There is no connected admin impersonation switch, fake verification code or demo-content fallback.
 
 Admin curated identifies admin-created courses. Recognised identifies admin-reviewed student content while retaining authorship; it does not mean university accreditation. Initial registration assigns Horizon University without enrollment verification.
@@ -65,6 +65,8 @@ make check
 make backend-test
 make bundle
 ```
+
+On this RAM-limited local database, use `DOTNET_PROCESSOR_COUNT=1 make backend-test` to avoid overlapping fixture migrations; explicit concurrency tests still exercise simultaneous requests.
 
 Checks include locked .NET restore/build/format, offline Python contracts, mobile format/lint/types and focused client tests. Backend integration tests use disposable real PostgreSQL databases; they never migrate the development database. Bundle exports Android/web without launching a device. `npx expo-doctor` and `npx expo install --check` validate SDK dependencies.
 

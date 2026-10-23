@@ -155,10 +155,40 @@ namespace UniCompanion.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("UniCompanion.Core.Community.CommunityBlock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BlockedUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsAnonymous")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockedUserId");
+
+                    b.HasIndex("OwnerId", "BlockedUserId", "IsAnonymous")
+                        .IsUnique();
+
+                    b.ToTable("CommunityBlocks");
+                });
+
             modelBuilder.Entity("UniCompanion.Core.Community.CommunityPost", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AcceptedReplyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("AuthorId")
@@ -176,7 +206,13 @@ namespace UniCompanion.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("EditedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsAnonymous")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsSample")
@@ -189,6 +225,11 @@ namespace UniCompanion.Infrastructure.Migrations
 
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("RequestKey")
                         .IsRequired()
@@ -209,7 +250,47 @@ namespace UniCompanion.Infrastructure.Migrations
 
                     b.HasIndex("ParentId", "CreatedAt");
 
+                    b.HasIndex("AuthorId", "CreatedAt", "Id");
+
                     b.ToTable("CommunityPosts");
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Community.CommunityReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ReporterId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReporterId");
+
+                    b.HasIndex("PostId", "ReporterId")
+                        .IsUnique();
+
+                    b.HasIndex("State", "CreatedAt");
+
+                    b.ToTable("CommunityReports");
                 });
 
             modelBuilder.Entity("UniCompanion.Core.Community.CommunityVote", b =>
@@ -231,6 +312,55 @@ namespace UniCompanion.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_CommunityVote_Value", "\"Value\" IN (-1, 1)");
                         });
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Community.SavedItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "CreatedAt", "Id");
+
+                    b.HasIndex("OwnerId", "Kind", "TargetId")
+                        .IsUnique();
+
+                    b.ToTable("SavedItems");
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Community.ThreadSubscription", b =>
+                {
+                    b.Property<Guid>("ThreadId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OwnerId")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("ThreadId", "OwnerId");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("ThreadSubscriptions");
                 });
 
             modelBuilder.Entity("UniCompanion.Core.Courses.Course", b =>
@@ -694,6 +824,21 @@ namespace UniCompanion.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("UniCompanion.Core.Community.CommunityBlock", b =>
+                {
+                    b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("BlockedUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("UniCompanion.Core.Community.CommunityPost", b =>
                 {
                     b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
@@ -713,6 +858,21 @@ namespace UniCompanion.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
+            modelBuilder.Entity("UniCompanion.Core.Community.CommunityReport", b =>
+                {
+                    b.HasOne("UniCompanion.Core.Community.CommunityPost", null)
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReporterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("UniCompanion.Core.Community.CommunityVote", b =>
                 {
                     b.HasOne("UniCompanion.Core.Community.CommunityPost", null)
@@ -724,6 +884,30 @@ namespace UniCompanion.Infrastructure.Migrations
                     b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Community.SavedItem", b =>
+                {
+                    b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Community.ThreadSubscription", b =>
+                {
+                    b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UniCompanion.Core.Community.CommunityPost", null)
+                        .WithMany()
+                        .HasForeignKey("ThreadId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
