@@ -74,6 +74,8 @@ public static class DependencyInjection
         services.AddScoped<CourseSearch>();
         services.AddScoped<StudyAccess>();
         services.AddScoped<StudyJobs>();
+        services.AddScoped<UniCompanion.Infrastructure.Practice.PracticeComposer>();
+        services.AddScoped<UniCompanion.Infrastructure.Practice.PracticeEvaluator>();
         services.AddScoped<ActivityEvents>();
         services.AddScoped<ActivityDispatcher>();
         services.AddScoped<StudyComposer>();

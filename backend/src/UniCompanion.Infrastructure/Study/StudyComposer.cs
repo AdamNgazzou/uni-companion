@@ -9,7 +9,7 @@ using UniCompanion.Infrastructure.Persistence;
 
 namespace UniCompanion.Infrastructure.Study;
 
-public sealed class StudyComposer(AppDbContext db, CourseSearch search, ITextGeneration generation)
+public sealed class StudyComposer(AppDbContext db, CourseSearch search, ITextGeneration generation, UniCompanion.Infrastructure.Practice.PracticeComposer practice)
 {
     public async Task<StudyResult> ComposeAsync(StudyJob job, Func<string, CancellationToken, Task> beforeCall,
         Func<string, CancellationToken, Task<string?>> checkpoint, Func<string, string, CancellationToken, Task> saveCheckpoint, CancellationToken ct)
@@ -21,7 +21,11 @@ public sealed class StudyComposer(AppDbContext db, CourseSearch search, ITextGen
                          where job.SourceVersionIds.Contains(c.MaterialVersionId) && m.CourseId == job.CourseId && c.Model == PythonAiBridge.Model
                          orderby m.SortOrder, c.Page, c.Ordinal
                          select new StudySource(c.Id, m.Id, v.Id, m.FileName, c.Page, c.Text)).ToArrayAsync(ct);
-        if (all.Length == 0) return Abstain(job.Kind, request.Language);
+        if (all.Length == 0)
+        {
+            if (job.Kind == "practice") throw new GenerationFailure("insufficient_evidence", false);
+            return Abstain(job.Kind, request.Language);
+        }
         if (job.Kind == "answer")
         {
             var admin = await (from ur in db.UserRoles join r in db.Roles on ur.RoleId equals r.Id where ur.UserId == job.OwnerId && r.Name == "Admin" select r.Id).AnyAsync(ct);
@@ -37,6 +41,12 @@ public sealed class StudyComposer(AppDbContext db, CourseSearch search, ITextGen
         var totalPages = await db.MaterialVersions.Where(v => job.SourceVersionIds.Contains(v.Id)).SumAsync(v => v.PageCount ?? 0, ct);
         totalPages = Math.Max(totalPages, pages);
         if (all.Length > 140) throw new GenerationFailure("scope_too_large", false);
+        if (job.Kind == "practice")
+        {
+            var selected = all.Length <= 24 ? all : Enumerable.Range(0, 24).Select(i => all[(int)((long)i * (all.Length - 1) / 23)]).DistinctBy(s => s.ChunkId).ToArray();
+            var artifact = await practice.ComposeAsync(request.Practice!, request.Language, request.Question, selected, beforeCall, ct, variation: job.Id.ToString());
+            return new StudyResult("practice", false, [], [], selected.Select(s => (s.VersionId, s.Page)).Distinct().Count(), totalPages, artifact);
+        }
         if (job.Kind == "quiz")
         {
             // Select evidence across the whole declared scope, not just its beginning.

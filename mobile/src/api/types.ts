@@ -46,12 +46,17 @@ export type Question = {
   citations: Citation[];
 };
 export type StudyRequest = {
-  kind: 'answer' | 'summary' | 'quiz';
+  kind: 'answer' | 'summary' | 'quiz' | 'practice';
   question?: string;
   materialId?: string;
   chapterId?: string;
   language: 'en' | 'fr';
   count?: 5 | 10;
+  practice?: {
+    mode: 'written' | 'coding' | 'mixed';
+    difficulty: 'guided' | 'standard' | 'challenge';
+    minutes: 15 | 30 | 45;
+  };
 };
 export type Job = {
   title?: string;
@@ -71,6 +76,7 @@ export type Job = {
     insufficientEvidence: boolean;
     paragraphs?: Paragraph[];
     questions?: Question[];
+    practice?: PracticeArtifact;
     coveredPages: number;
     totalPages: number;
   };
@@ -166,4 +172,42 @@ export type ActivityDestination = {
   id: string;
   replyId?: string;
   replyPage?: number;
+};
+
+export type PracticeTask = {
+  id: string;
+  kind: 'written' | 'coding';
+  title: string;
+  prompt: string;
+  given: string;
+  citations: Citation[];
+  starterCode?: string | null;
+  runInstructions?: string | null;
+  expectedOutput?: string | null;
+  steps: string[];
+  checks: { input: string; expected: string }[];
+};
+export type PracticeArtifact = {
+  mode: 'written' | 'coding' | 'mixed';
+  language: string;
+  objectives: string[];
+  prerequisites: string[];
+  tasks: PracticeTask[];
+};
+export type PracticeState = {
+  id: string;
+  hintLevel: number;
+  hints: string[];
+  hintCount: number;
+  solutionViewed: boolean;
+  solution?: string | null;
+  solutionCode?: string | null;
+  rubric?: string[] | null;
+  attempts: {
+    id: string;
+    answer: string;
+    hintsUsed: boolean;
+    solutionViewedBefore: boolean;
+    createdAt: string;
+  }[];
 };

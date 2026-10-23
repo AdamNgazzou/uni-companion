@@ -23,10 +23,12 @@ public sealed class StudyJobs(AppDbContext db, StudyAccess access, TimeProvider 
     public async Task<StudyJob> EnqueueAsync(Guid courseId, string owner, string key, StudyRequest request, CancellationToken ct)
     {
         ValidateKey(key);
-        if (request.Kind is not ("answer" or "summary" or "quiz") || request.Language is not ("en" or "fr") ||
+        if (request.Kind is not ("answer" or "summary" or "quiz" or "practice") || request.Language is not ("en" or "fr") ||
             (request.Kind == "answer" && (string.IsNullOrWhiteSpace(request.Question) || request.Question.Length > 2000)) ||
             (request.Kind != "answer" && request.MaterialId is null && string.IsNullOrWhiteSpace(request.ChapterId)) ||
-            (request.Kind == "quiz" && request.Count is not (5 or 10)) || request.ChapterId?.Length > 100)
+            (request.Kind == "quiz" && request.Count is not (5 or 10)) || request.ChapterId?.Length > 100 ||
+            (request.Kind == "practice" && (request.Practice is null || request.Practice.Mode is not ("written" or "coding" or "mixed") || request.Practice.Difficulty is not ("guided" or "standard" or "challenge") || request.Practice.Minutes is not (15 or 30 or 45) || request.Question?.Length > 1000)) ||
+            (request.Kind != "practice" && request.Practice is not null))
             throw new StudyRequestException(400, "invalid_study_request");
         if (!await access.CanReadAsync(courseId, owner, ct)) throw new StudyRequestException(404, "not_found");
         var requestJson = JsonSerializer.Serialize(request, Json);
@@ -54,8 +56,8 @@ public sealed class StudyJobs(AppDbContext db, StudyAccess access, TimeProvider 
             var chunkCount = await db.DocumentChunks.CountAsync(c => versions.Contains(c.MaterialVersionId) && c.Model == PythonAiBridge.Model, ct);
             if (chunkCount > 140) throw new StudyRequestException(400, "scope_too_large");
         }
-        var fingerprint = Hash(requestHash + string.Join(',', versions.Order()) + PromptVersion + PythonAiBridge.Model);
-        var cached = await db.StudyJobs.FirstOrDefaultAsync(x => x.OwnerId == owner && x.CourseId == courseId && x.Fingerprint == fingerprint && x.State == JobStates.Succeeded, ct);
+        var fingerprint = Hash(requestHash + string.Join(',', versions.Order()) + PromptVersion + PythonAiBridge.Model + (request.Kind == "practice" ? UniCompanion.Infrastructure.Practice.PracticeComposer.Version : ""));
+        var cached = request.Kind == "practice" ? null : await db.StudyJobs.FirstOrDefaultAsync(x => x.OwnerId == owner && x.CourseId == courseId && x.Fingerprint == fingerprint && x.State == JobStates.Succeeded, ct);
         if (cached is not null)
         {
             db.StudyRequestKeys.Add(new StudyRequestKey { OwnerId = owner, Key = key, RequestHash = requestHash, JobId = cached.Id });
@@ -122,7 +124,23 @@ public sealed class StudyJobs(AppDbContext db, StudyAccess access, TimeProvider 
         });
     }
 
-    public static object PublicResult(StudyResult result) => result.Kind == "quiz"
+    public static object PublicResult(StudyResult result) => result.Kind == "practice"
+        ? new
+        {
+            result.Kind,
+            result.InsufficientEvidence,
+            result.CoveredPages,
+            result.TotalPages,
+            practice = result.Practice is null ? null : new
+            {
+                result.Practice.Mode,
+                result.Practice.Language,
+                result.Practice.Objectives,
+                result.Practice.Prerequisites,
+                tasks = result.Practice.Tasks.Select(t => new { t.Id, t.Kind, t.Title, t.Prompt, t.Given, t.Citations, t.StarterCode, t.RunInstructions, t.ExpectedOutput, t.Steps, t.Checks })
+            }
+        }
+        : result.Kind == "quiz"
         ? new { result.Kind, result.InsufficientEvidence, questions = result.Questions.Select(q => new { q.Id, q.Question, q.Options, q.Citations }), result.CoveredPages, result.TotalPages }
         : new { result.Kind, result.InsufficientEvidence, result.Paragraphs, result.CoveredPages, result.TotalPages };
 

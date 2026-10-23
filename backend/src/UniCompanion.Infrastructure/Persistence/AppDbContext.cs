@@ -32,9 +32,30 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<ActivityItem> ActivityItems => Set<ActivityItem>();
     public DbSet<ActivityPreference> ActivityPreferences => Set<ActivityPreference>();
 
+    public DbSet<UniCompanion.Core.Practice.PracticeProgress> PracticeProgress => Set<UniCompanion.Core.Practice.PracticeProgress>();
+    public DbSet<UniCompanion.Core.Practice.PracticeAttempt> PracticeAttempts => Set<UniCompanion.Core.Practice.PracticeAttempt>();
+
     protected override void OnModelCreating(ModelBuilder model)
     {
         base.OnModelCreating(model);
+        model.Entity<UniCompanion.Core.Practice.PracticeProgress>(e =>
+        {
+            e.HasKey(x => new { x.JobId, x.OwnerId, x.TaskId });
+            e.Property(x => x.TaskId).HasMaxLength(40);
+            e.HasOne<StudyJob>().WithMany().HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Practice.PracticeAttempt>(e =>
+        {
+            e.Property(x => x.Key).HasMaxLength(100);
+            e.Property(x => x.RequestHash).HasMaxLength(64);
+            e.Property(x => x.Answer).HasMaxLength(12000);
+            e.Property(x => x.TaskId).HasMaxLength(40);
+            e.HasIndex(x => new { x.OwnerId, x.Key }).IsUnique();
+            e.HasIndex(x => new { x.JobId, x.OwnerId, x.TaskId, x.CreatedAt, x.Id });
+            e.HasOne<StudyJob>().WithMany().HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
         model.Entity<ActivityEvent>(e =>
         {
             e.Property(x => x.EventKey).HasMaxLength(200);

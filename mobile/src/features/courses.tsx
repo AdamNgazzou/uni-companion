@@ -218,6 +218,12 @@ export function CourseScreen() {
       {course && (
         <>
           <Row
+            title="Written exercises & coding labs"
+            detail="Create a practice set from an indexed PDF"
+            icon="Code2"
+            onPress={() => router.push({ pathname: '/practice', params: { courseId: id } })}
+          />
+          <Row
             title="Ask AI about this course"
             detail="An explanation grounded in your course PDFs"
             icon="Sparkle"
@@ -329,6 +335,17 @@ export function MaterialScreen() {
           }
         />
       ))}
+      <Row
+        icon="Code2"
+        title="Written exercises & coding labs"
+        detail="New tasks based on this PDF"
+        onPress={() =>
+          router.push({
+            pathname: '/practice',
+            params: { courseId: params.courseId, materialId: params.id },
+          })
+        }
+      />
       <BookmarkControl kind="material" id={params.id} />
       <Notice>
         AI study aids can miss nuance. Use the linked original pages to check your understanding.

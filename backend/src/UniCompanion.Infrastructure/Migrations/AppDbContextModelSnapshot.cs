@@ -606,6 +606,83 @@ namespace UniCompanion.Infrastructure.Migrations
                     b.ToTable("MaterialVersions");
                 });
 
+            modelBuilder.Entity("UniCompanion.Core.Practice.PracticeAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasMaxLength(12000)
+                        .HasColumnType("character varying(12000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HintsUsed")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("SolutionViewedBefore")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TaskId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "Key")
+                        .IsUnique();
+
+                    b.HasIndex("JobId", "OwnerId", "TaskId", "CreatedAt", "Id");
+
+                    b.ToTable("PracticeAttempts");
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Practice.PracticeProgress", b =>
+                {
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OwnerId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TaskId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("HintLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("RevealedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("JobId", "OwnerId", "TaskId");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("PracticeProgress");
+                });
+
             modelBuilder.Entity("UniCompanion.Core.Study.DocumentChunk", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1080,6 +1157,36 @@ namespace UniCompanion.Infrastructure.Migrations
                     b.HasOne("UniCompanion.Core.Courses.Material", null)
                         .WithMany()
                         .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Practice.PracticeAttempt", b =>
+                {
+                    b.HasOne("UniCompanion.Core.Study.StudyJob", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Practice.PracticeProgress", b =>
+                {
+                    b.HasOne("UniCompanion.Core.Study.StudyJob", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

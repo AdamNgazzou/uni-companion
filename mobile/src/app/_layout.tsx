@@ -29,6 +29,7 @@ function Routes() {
         <Stack.Screen name="course" />
         <Stack.Screen name="material" />
         <Stack.Screen name="study" />
+        <Stack.Screen name="practice" />
         <Stack.Screen name="job" />
         <Stack.Screen name="reader" />
         <Stack.Screen name="history" />

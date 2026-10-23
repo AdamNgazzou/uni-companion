@@ -30,9 +30,10 @@ Combine course study tools with course discussions: students can study summaries
 - Users can participate with their profile or anonymously.
 - Built by one developer, with no fixed deadline.
 - React Native implementation is authorized. The mobile app is now connected to the local backend; phone testing happens in Expo Go after coding. Do not start an emulator because of RAM constraints.
+- Generated practice supports written reasoning/scenarios and Python 3 standard-library labs with original source links, graduated hints, deliberate solution reveal, saved text-only attempts and account-scoped local drafts. Numerical marking, external datasets/packages and execution of student code are deferred.
 - AI-backed study sessions provide grounded answers, headed summaries and server-graded quizzes with original-page citations.
 - The admin curates university courses. Students may create labelled courses with visible authorship; the admin can recognise those courses without changing who created them.
-- Community now persists campus/course threads, one-level replies and votes. Server responses hide anonymous names/IDs and avoid OP identity linkage across anonymity modes. Development-only sample activity is explicitly labelled; own-content history, bookmarks, edit/delete, follow/mute, helpful replies, scoped hiding and basic reporting/admin review are implemented locally. Enrollment verification, uploads and notifications remain later work.
+- Community now persists campus/course threads, one-level replies and votes. Server responses hide anonymous names/IDs and avoid OP identity linkage across anonymity modes. Development-only sample activity is explicitly labelled; own-content history, bookmarks, edit/delete, follow/mute, helpful replies, scoped hiding and basic reporting/admin review are implemented locally. A durable in-app Activity inbox and saved preferences are implemented; enrollment verification, uploads and remote phone push remain later work.
 
 ## Brand Commitments
 

@@ -82,3 +82,5 @@ python3 backend/scripts/dev.py seed-community
 The development-only command adds eight disabled, passwordless fictional student identities, ten sample threads, 26 replies and 178 votes. It is repeatable and leaves real users/content unchanged. Open Discuss while signed in to explore or add real replies/posts. Sample identities are not login accounts.
 
 Activity inbox: replies in followed threads and completed/failed study sessions appear under the bell on Learn and You. All/Unread, read state, live destinations and four saved in-app preferences are available; grouped upvotes are opt-in. The worker dispatches activity independently of generation. Phone push delivery is still pending its development build and credentials.
+
+Written exercises & coding labs are available from a joined course or PDF. Choose an indexed PDF, written/coding/mixed, guidance, English/French and an estimated duration. Hints, explicit solution reveal, saved attempts and local drafts survive reopening. The first version supports reasoning/scenario writing and Python 3 standard-library labs run on your own computer; pasted code is stored as text, with no automatic or official grade.

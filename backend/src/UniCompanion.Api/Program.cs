@@ -81,6 +81,14 @@ if (Array.IndexOf(args, "--evaluate-study") is var studyIndex && studyIndex >= 0
     await evaluator.RunAsync(args[studyIndex + 1], args[studyIndex + 2], CancellationToken.None, studyIndex + 3 < args.Length ? args[studyIndex + 3].Split(',') : null);
     return;
 }
+if (Array.IndexOf(args, "--evaluate-practice") is var practiceIndex && practiceIndex >= 0)
+{
+    if (practiceIndex + 2 >= args.Length) throw new InvalidOperationException("Supply manifest and private output paths.");
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<UniCompanion.Infrastructure.Practice.PracticeEvaluator>().RunAsync(args[practiceIndex + 1], args[practiceIndex + 2], CancellationToken.None, practiceIndex + 3 < args.Length ? args[practiceIndex + 3].Split(',') : null);
+    return;
+}
+
 if (args.Contains("--seed-community"))
 {
     if (!app.Environment.IsDevelopment()) throw new InvalidOperationException("Community demo seeding is development-only.");
@@ -133,6 +141,7 @@ app.MapBrowserSession();
 app.MapCourses();
 app.MapCommunity();
 app.MapActivity();
+UniCompanion.Api.Features.Practice.PracticeEndpoints.MapPractice(app);
 app.MapStudy();
 await app.RunAsync();
 

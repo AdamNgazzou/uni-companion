@@ -200,11 +200,13 @@ export function StudyProgress({ job }: { job: Job }) {
 }
 export function HistoryEntry({ job, onPress }: { job: Job; onPress: () => void }) {
   const kind =
-    job.kind === 'quiz'
-      ? `Practice · ${job.request.count || 5} questions`
-      : job.kind === 'summary'
-        ? 'Summary'
-        : 'Explanation';
+    job.kind === 'practice'
+      ? 'Written & coding practice'
+      : job.kind === 'quiz'
+        ? `Quiz · ${job.request.count || 5} questions`
+        : job.kind === 'summary'
+          ? 'Summary'
+          : 'Explanation';
   return (
     <Pressable
       accessibilityRole="button"

@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using UniCompanion.Core.Practice;
+
 namespace UniCompanion.Core.Study;
 
 public static class JobStates
@@ -56,13 +59,13 @@ public sealed class QuizAttempt
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public sealed record StudyRequest(string Kind, string? Question = null, Guid? MaterialId = null, string? ChapterId = null, string Language = "en", int Count = 5);
+public sealed record StudyRequest(string Kind, string? Question = null, Guid? MaterialId = null, string? ChapterId = null, string Language = "en", int Count = 5, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PracticeOptions? Practice = null);
 public sealed record StudySource(Guid ChunkId, Guid MaterialId, Guid VersionId, string FileName, int Page, string Text);
 public sealed record StudyCitation(Guid ChunkId, Guid MaterialId, Guid VersionId, string FileName, int Page, string Quote);
 public sealed record StudyParagraph(string Text, StudyCitation[] Citations, string? Heading = null);
 public sealed record StudyOption(string Id, string Text);
 public sealed record StudyQuestion(string Id, string Question, StudyOption[] Options, string CorrectOptionId, string Explanation, StudyCitation[] Citations);
-public sealed record StudyResult(string Kind, bool InsufficientEvidence, StudyParagraph[] Paragraphs, StudyQuestion[] Questions, int CoveredPages = 0, int TotalPages = 0);
+public sealed record StudyResult(string Kind, bool InsufficientEvidence, StudyParagraph[] Paragraphs, StudyQuestion[] Questions, int CoveredPages = 0, int TotalPages = 0, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PracticeArtifact? Practice = null);
 public sealed record AnswerSubmission(string QuestionId, string OptionId);
 public sealed record AttemptRequest(AnswerSubmission[] Answers);
 
