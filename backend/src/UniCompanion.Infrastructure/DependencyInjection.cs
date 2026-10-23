@@ -12,6 +12,7 @@ using UniCompanion.Core.Study;
 using UniCompanion.Infrastructure.Persistence;
 using UniCompanion.Infrastructure.Storage;
 using UniCompanion.Infrastructure.Study;
+using UniCompanion.Infrastructure.Activity;
 
 namespace UniCompanion.Infrastructure;
 
@@ -73,6 +74,8 @@ public static class DependencyInjection
         services.AddScoped<CourseSearch>();
         services.AddScoped<StudyAccess>();
         services.AddScoped<StudyJobs>();
+        services.AddScoped<ActivityEvents>();
+        services.AddScoped<ActivityDispatcher>();
         services.AddScoped<StudyComposer>();
         services.AddScoped<StudyProcessor>();
         services.AddSingleton(new PrivateFileStore(Path.Combine(dataRoot, "blobs")));

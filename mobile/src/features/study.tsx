@@ -31,7 +31,7 @@ import {
 } from '../api/types';
 import { sourceScope } from './course-resources';
 import { useResource } from './hooks';
-import { ResourceState } from './courses';
+import { ResourceState } from './resource-state';
 import PdfCanvas from '../pdf/PdfCanvas';
 import { base64, physicalPage } from '../pdf/bytes';
 import { useSession } from '../auth/session';

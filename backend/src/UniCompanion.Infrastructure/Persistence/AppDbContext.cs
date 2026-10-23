@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using UniCompanion.Core.Courses;
 using UniCompanion.Core.Community;
+using UniCompanion.Core.Activity;
 using UniCompanion.Core.Study;
 using UniCompanion.Infrastructure.Identity;
 
@@ -27,10 +28,34 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<SavedItem> SavedItems => Set<SavedItem>();
     public DbSet<CommunityBlock> CommunityBlocks => Set<CommunityBlock>();
     public DbSet<CommunityReport> CommunityReports => Set<CommunityReport>();
+    public DbSet<ActivityEvent> ActivityEvents => Set<ActivityEvent>();
+    public DbSet<ActivityItem> ActivityItems => Set<ActivityItem>();
+    public DbSet<ActivityPreference> ActivityPreferences => Set<ActivityPreference>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
         base.OnModelCreating(model);
+        model.Entity<ActivityEvent>(e =>
+        {
+            e.Property(x => x.EventKey).HasMaxLength(200);
+            e.Property(x => x.Kind).HasMaxLength(30);
+            e.HasIndex(x => x.EventKey).IsUnique();
+            e.HasIndex(x => new { x.DispatchedAt, x.CreatedAt, x.Id });
+        });
+        model.Entity<ActivityItem>(e =>
+        {
+            e.Property(x => x.GroupKey).HasMaxLength(100);
+            e.Property(x => x.Kind).HasMaxLength(30);
+            e.HasIndex(x => new { x.OwnerId, x.GroupKey }).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.ReadAt, x.UpdatedAt, x.Id });
+            e.HasIndex(x => new { x.OwnerId, x.UpdatedAt, x.Id });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<ActivityPreference>(e =>
+        {
+            e.HasKey(x => x.OwnerId);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
         model.Entity<ThreadSubscription>(e =>
         {
             e.HasKey(x => new { x.ThreadId, x.OwnerId });

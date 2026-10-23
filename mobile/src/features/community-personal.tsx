@@ -6,7 +6,7 @@ import { api } from '../api/runtime';
 import { errorText } from '../api/client';
 import type { MyDiscussionPage, SavedItem, Report } from '../api/types';
 import { useResource } from './hooks';
-import { ResourceState } from './courses';
+import { ResourceState } from './resource-state';
 
 export function MyDiscussionsScreen() {
   const [kind, setKind] = useState('threads');

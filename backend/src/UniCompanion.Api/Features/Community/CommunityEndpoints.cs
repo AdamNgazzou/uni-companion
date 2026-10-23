@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using UniCompanion.Infrastructure.Activity;
 using Microsoft.EntityFrameworkCore;
 using UniCompanion.Core.Community;
 using UniCompanion.Infrastructure.Persistence;
@@ -66,11 +67,11 @@ public static partial class CommunityEndpoints
                 context.User.FindFirstValue(ClaimTypes.NameIdentifier)!).ToArrayAsync(ct);
             return Results.Ok(new { data, total, page = current, limit = 30 });
         });
-        routes.MapPost("/", (CreatePost request, HttpContext context, AppDbContext db, CancellationToken ct) =>
-            CreateAsync(request, null, context, db, ct)).RequireRateLimiting("community");
-        routes.MapPost("/{id:guid}/replies", (Guid id, CreateReply request, HttpContext context, AppDbContext db, CancellationToken ct) =>
-            CreateAsync(new CreatePost("", request.Body, IsAnonymous: request.IsAnonymous), id, context, db, ct)).RequireRateLimiting("community");
-        routes.MapPut("/{id:guid}/vote", async (Guid id, SetVote request, HttpContext context, AppDbContext db, CancellationToken ct) =>
+        routes.MapPost("/", (CreatePost request, HttpContext context, AppDbContext db, ActivityEvents activity, CancellationToken ct) =>
+            CreateAsync(request, null, context, db, activity, ct)).RequireRateLimiting("community");
+        routes.MapPost("/{id:guid}/replies", (Guid id, CreateReply request, HttpContext context, AppDbContext db, ActivityEvents activity, CancellationToken ct) =>
+            CreateAsync(new CreatePost("", request.Body, IsAnonymous: request.IsAnonymous), id, context, db, activity, ct)).RequireRateLimiting("community");
+        routes.MapPut("/{id:guid}/vote", async (Guid id, SetVote request, HttpContext context, AppDbContext db, ActivityEvents activity, CancellationToken ct) =>
         {
             if (request.Value is < -1 or > 1) return Results.BadRequest();
             var owner = context.User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -83,6 +84,7 @@ public static partial class CommunityEndpoints
                 await db.CommunityVotes.Where(v => v.PostId == id && v.UserId == owner).ExecuteDeleteAsync(ct);
             else
                 await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"CommunityVotes\" (\"PostId\", \"UserId\", \"Value\") VALUES ({id}, {owner}, {request.Value}) ON CONFLICT (\"PostId\", \"UserId\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\"", ct);
+            if (request.Value == 1) await activity.UpvoteAsync(post, owner, ct);
             var result = await Views(db.CommunityPosts.AsNoTracking().Where(p => p.Id == id), db, owner).SingleAsync(ct);
             await transaction.CommitAsync(ct);
             return Results.Ok(result);
@@ -102,7 +104,7 @@ public static partial class CommunityEndpoints
         return endpoints;
     }
 
-    private static async Task<IResult> CreateAsync(CreatePost request, Guid? parentId, HttpContext context, AppDbContext db, CancellationToken ct)
+    private static async Task<IResult> CreateAsync(CreatePost request, Guid? parentId, HttpContext context, AppDbContext db, ActivityEvents activity, CancellationToken ct)
     {
         var title = request.Title?.Trim() ?? "";
         var body = request.Body?.Trim() ?? "";
@@ -151,6 +153,7 @@ public static partial class CommunityEndpoints
         if (!await db.ThreadSubscriptions.AnyAsync(x => x.ThreadId == (parentId ?? post.Id) && x.OwnerId == owner, ct))
             db.ThreadSubscriptions.Add(new ThreadSubscription { ThreadId = parentId ?? post.Id, OwnerId = owner });
         await db.SaveChangesAsync(ct);
+        await activity.ReplyAsync(post, ct);
         await transaction.CommitAsync(ct);
         return Results.Created($"/api/v1/community/posts/{parentId ?? post.Id}", await Views(db.CommunityPosts.Where(p => p.Id == post.Id), db, owner).SingleAsync(ct));
     }

@@ -220,7 +220,9 @@ export function errorText(error: unknown): string {
       return 'Please sign in again. Check that your email is confirmed and your password is correct.';
     if (error.status === 404) return 'This resource is no longer available to your account.';
     if (error.status === 429)
-      return 'You’ve reached the study limit. Give your current sessions a moment, then try again.';
+      return error.code === 'study_limit'
+        ? 'You’ve reached the study limit. Give your current sessions a moment, then try again.'
+        : 'You’re doing that a little quickly. Wait a moment and try again.';
     if (error.code === 'question_too_long') return 'Try a shorter question focused on one idea.';
     if (error.code === 'material_processing')
       return 'This document is still being prepared. Please try again later.';

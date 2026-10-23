@@ -40,6 +40,8 @@ function Routes() {
         <Stack.Screen name="saved-items" />
         <Stack.Screen name="blocked" />
         <Stack.Screen name="reports" />
+        <Stack.Screen name="activity" />
+        <Stack.Screen name="activity-settings" />
       </Stack.Protected>
     </Stack>
   );

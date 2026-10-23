@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   Button,
@@ -26,32 +26,8 @@ import { useResource } from './hooks';
 import { resourceGroups, resourceFormat } from './course-resources';
 import { pending } from '../api/types';
 import { BookmarkControl } from './forum-controls';
-export function ResourceState({
-  loading,
-  error,
-  retry,
-}: {
-  loading: boolean;
-  error: string;
-  retry: () => void;
-}) {
-  return (
-    <>
-      {loading && (
-        <View style={{ padding: 22, alignItems: 'center', gap: 10 }}>
-          <ActivityIndicator color={c.blue} />
-          <T variant="small">Bringing your study space together…</T>
-        </View>
-      )}
-      {!!error && (
-        <>
-          <Notice tone="error">{error}</Notice>
-          <Button label="Try again" kind="secondary" onPress={retry} />
-        </>
-      )}
-    </>
-  );
-}
+import { ActivityBell } from './activity';
+import { ResourceState } from './resource-state';
 function CourseCard({ course, onPress }: { course: Course; onPress: () => void }) {
   return (
     <Pressable
@@ -118,17 +94,16 @@ export function CoursesScreen() {
       (x) => (all || x.joined) && x.title.toLowerCase().includes(search.toLowerCase()),
     ) ?? [];
   return (
-    <Page>
+    <Page
+      onRefresh={() => {
+        resource.reload();
+        sessions.reload();
+      }}
+      refreshing={resource.loading || sessions.loading}
+    >
       <View style={[layout.inline, { justifyContent: 'space-between' }]}>
         <Logo />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Your profile"
-          onPress={() => router.push('/profile')}
-          style={{ padding: 12, borderRadius: 15, backgroundColor: c.orangeSoft }}
-        >
-          <Icon name="UserRound" color={c.ink} />
-        </Pressable>
+        <ActivityBell />
       </View>
       <Hero
         title={`A little progress, ${profile?.displayName.split(' ')[0] || 'friend'}?`}

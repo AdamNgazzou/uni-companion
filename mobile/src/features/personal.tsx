@@ -4,15 +4,22 @@ import { Button, Field, Header, Hero, Notice, Page, Row, Section, T } from '../u
 import { useSession } from '../auth/session';
 import { api } from '../api/runtime';
 import { errorText } from '../api/client';
+import { ActivityBell } from './activity';
 export function ProfileScreen() {
   const { profile, logout } = useSession();
   const [error, setError] = useState('');
   return (
     <Page>
-      <Header title="Your corner" back={false} />
+      <Header title="Your corner" back={false} right={<ActivityBell />} />
       <Hero title={profile?.displayName || 'Your profile'} subtitle={profile?.university} />
       <T>{profile?.email}</T>
       <Section title="Make progress your way" />
+      <Row
+        title="Activity"
+        detail="Replies, followed discussions and finished study sessions"
+        icon="Bell"
+        onPress={() => router.push('/activity')}
+      />
       <Row
         title="My discussions"
         detail="Your threads and replies, including anonymous posts"
@@ -103,6 +110,12 @@ export function SettingsScreen() {
         detail="Manage hidden profiles and anonymous contributions"
         icon="EyeOff"
         onPress={() => router.push('/blocked')}
+      />
+      <Row
+        title="Activity preferences"
+        detail="Choose the updates you receive"
+        icon="Bell"
+        onPress={() => router.push('/activity-settings')}
       />
       <Section title="Change password" />
       <Field

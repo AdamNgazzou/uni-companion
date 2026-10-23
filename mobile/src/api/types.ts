@@ -139,3 +139,31 @@ export type Report = {
   reason: string;
   createdAt: string;
 };
+export type ActivityItem = {
+  id: string;
+  kind: 'reply' | 'upvote' | 'study_completed' | 'study_failed';
+  title: string;
+  detail: string;
+  createdAt: string;
+  updatedAt: string;
+  readAt?: string;
+};
+export type ActivityPage = {
+  data: ActivityItem[];
+  total: number;
+  unreadCount: number;
+  page: number;
+  limit: number;
+};
+export type ActivityPreferences = {
+  replies: boolean;
+  followedThreads: boolean;
+  studyJobs: boolean;
+  upvotes: boolean;
+};
+export type ActivityDestination = {
+  kind: 'study' | 'thread';
+  id: string;
+  replyId?: string;
+  replyPage?: number;
+};

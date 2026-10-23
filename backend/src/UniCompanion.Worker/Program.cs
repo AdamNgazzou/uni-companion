@@ -1,5 +1,6 @@
 using UniCompanion.Infrastructure;
 using UniCompanion.Infrastructure.Study;
+using UniCompanion.Infrastructure.Activity;
 using UniCompanion.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddRouting();
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
 builder.Services.AddHostedService<StudyWorker>();
+builder.Services.AddHostedService<ActivityWorker>();
 await builder.Build().RunAsync();
 
 internal sealed class StudyWorker(IServiceScopeFactory scopes, ILogger<StudyWorker> logger) : BackgroundService
@@ -30,6 +32,29 @@ internal sealed class StudyWorker(IServiceScopeFactory scopes, ILogger<StudyWork
             catch (Exception e)
             {
                 logger.LogWarning("Study worker temporarily unavailable ({ErrorType})", e.GetType().Name);
+                await Task.Delay(5000, stoppingToken);
+            }
+        }
+    }
+}
+
+internal sealed class ActivityWorker(IServiceScopeFactory scopes, ILogger<ActivityWorker> logger) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        logger.LogInformation("Activity dispatcher started independently of generation.");
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await using var scope = scopes.CreateAsyncScope();
+                if (!await scope.ServiceProvider.GetRequiredService<ActivityDispatcher>().DispatchNextAsync(stoppingToken))
+                    await Task.Delay(1500, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+            catch (Exception error)
+            {
+                logger.LogWarning("Activity dispatcher temporarily unavailable ({ErrorType})", error.GetType().Name);
                 await Task.Delay(5000, stoppingToken);
             }
         }

@@ -8,7 +8,7 @@ import { errorText } from '../api/client';
 import type { CommunityPost, CommunityPage, Course } from '../api/types';
 import { useSession } from '../auth/session';
 import { useResource } from './hooks';
-import { ResourceState } from './courses';
+import { ResourceState } from './resource-state';
 import { BookmarkControl, FollowControl, PostControls } from './forum-controls';
 import { composerDrafts } from '../community/draft-runtime';
 import type { ComposerDraft } from '../community/drafts';
@@ -218,7 +218,7 @@ function DiscussionFeed({ courseId }: { courseId: string }) {
     `/community/posts?sort=${sort}&page=${page}${courseId ? '&courseId=' + encodeURIComponent(courseId) : ''}${kind ? '&kind=' + encodeURIComponent(kind) : ''}`,
   );
   return (
-    <Page>
+    <Page onRefresh={resource.reload} refreshing={resource.loading}>
       <Header title="Your campus, together" back={false} />
       <View style={{ gap: 8 }}>
         <T variant="heading">{'Good questions.\nBetter together.'}</T>

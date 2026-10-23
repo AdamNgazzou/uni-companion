@@ -1,4 +1,5 @@
 using UniCompanion.Api.Features.Community;
+using UniCompanion.Api.Features.Activity;
 using UniCompanion.Api;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -131,6 +132,7 @@ app.MapAccounts();
 app.MapBrowserSession();
 app.MapCourses();
 app.MapCommunity();
+app.MapActivity();
 app.MapStudy();
 await app.RunAsync();
 
