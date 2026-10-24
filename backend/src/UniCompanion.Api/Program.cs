@@ -142,6 +142,7 @@ app.MapCourses();
 app.MapCommunity();
 app.MapActivity();
 UniCompanion.Api.Features.Practice.PracticeEndpoints.MapPractice(app);
+UniCompanion.Api.Features.Tutor.TutorEndpoints.MapTutor(app);
 app.MapStudy();
 await app.RunAsync();
 

@@ -27,6 +27,7 @@ import { resourceGroups, resourceFormat } from './course-resources';
 import { pending } from '../api/types';
 import { BookmarkControl } from './forum-controls';
 import { ActivityBell } from './activity';
+import { openStudy } from '../study/presentation';
 import { ResourceState } from './resource-state';
 function CourseCard({ course, onPress }: { course: Course; onPress: () => void }) {
   return (
@@ -120,7 +121,7 @@ export function CoursesScreen() {
           </T>
           <Button
             label={pending(recent.state) ? 'View progress' : 'Open last session'}
-            onPress={() => router.push({ pathname: '/job', params: { id: recent.id } })}
+            onPress={() => openStudy(recent)}
           />
         </View>
       )}
@@ -224,13 +225,13 @@ export function CourseScreen() {
             onPress={() => router.push({ pathname: '/practice', params: { courseId: id } })}
           />
           <Row
-            title="Ask AI about this course"
-            detail="An explanation grounded in your course PDFs"
+            title="Course tutor"
+            detail="Saved conversations with follow-up questions"
             icon="Sparkle"
             onPress={() =>
               router.push({
-                pathname: '/study',
-                params: { courseId: id, kind: 'answer', title: course.title },
+                pathname: '/tutor',
+                params: { courseId: id },
               })
             }
           />
@@ -313,7 +314,7 @@ export function MaterialScreen() {
         <Row
           key={kind}
           icon={kind === 'summary' ? 'BookOpen' : kind === 'quiz' ? 'HelpCircle' : 'MessageCircle'}
-          title={kind === 'summary' ? 'Summary' : kind === 'quiz' ? 'Quiz' : 'Ask AI'}
+          title={kind === 'summary' ? 'Summary' : kind === 'quiz' ? 'Quiz' : 'Course tutor'}
           detail={
             kind === 'summary'
               ? 'A saved summary with links to the source'
@@ -323,7 +324,7 @@ export function MaterialScreen() {
           }
           onPress={() =>
             router.push({
-              pathname: '/study',
+              pathname: kind === 'answer' ? '/tutor' : '/study',
               params: {
                 courseId: params.courseId,
                 materialId: params.id,

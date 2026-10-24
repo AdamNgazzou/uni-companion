@@ -31,7 +31,7 @@ public static class StudyEndpoints
             var labels = await jobs.DescribeAsync(rows, ct);
             var visible = new List<object>();
             foreach (var job in rows)
-                if (await access.CanReadAsync(job.CourseId, owner, ct)) visible.Add(new { job.Id, job.CourseId, job.Kind, job.State, job.Stage, job.CreatedAt, labels[job.Id].Title, labels[job.Id].CourseTitle, labels[job.Id].ScopeTitle, request = JsonSerializer.Deserialize<StudyRequest>(job.RequestJson, StudyJobs.Json) });
+                if (await access.CanReadAsync(job.CourseId, owner, ct)) visible.Add(new { job.Id, job.CourseId, job.Kind, job.State, job.Stage, job.CreatedAt, labels[job.Id].Title, labels[job.Id].CourseTitle, labels[job.Id].ScopeTitle, request = StudyJobs.PublicRequest(JsonSerializer.Deserialize<StudyRequest>(job.RequestJson, StudyJobs.Json)!) });
             return Results.Ok(new { data = visible });
         });
         group.MapPost("/study-jobs/{id:guid}/cancel", async (Guid id, HttpContext context, AppDbContext db, StudyJobs jobs, TimeProvider clock, CancellationToken ct) =>
@@ -108,7 +108,7 @@ public static class StudyEndpoints
             job.ErrorCode,
             job.CreatedAt,
             job.UpdatedAt,
-            request = JsonSerializer.Deserialize<StudyRequest>(job.RequestJson, StudyJobs.Json),
+            request = StudyJobs.PublicRequest(JsonSerializer.Deserialize<StudyRequest>(job.RequestJson, StudyJobs.Json)!),
             stale = await jobs.IsStaleAsync(job, ct),
             result
         });

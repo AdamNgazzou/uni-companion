@@ -1,6 +1,6 @@
 # Uni Companion backend
 
-.NET 10 API with ASP.NET Core Identity, EF Core/PostgreSQL, private content-addressed files, and an unchanged supplied Gemini helper behind a private Python adapter. The existing Expo app is in ../mobile and is not connected yet.
+.NET 10 API with ASP.NET Core Identity, EF Core/PostgreSQL, private content-addressed files, and an unchanged supplied Gemini helper behind a private Python adapter. The connected Expo app is in ../mobile.
 
 ## First run
 
@@ -118,7 +118,7 @@ It uses the unchanged gold manifest, creates an isolated temporary local account
 
 Authenticated routes under `/api/v1/community/posts`: GET feed (`sort=recent|top`, optional `courseId`, `kind`, `page`, `limit` up to 30); POST thread; GET `/{id}` and `/{id}/replies`; POST `/{id}/replies`; PUT `/{id}/vote` with `value` -1, 0 or 1; DELETE `/{id}` for its author/admin. Threads accept title (1–180), body (1–8000), kind (Question/Study tip/Discussion), optional courseId, and isAnonymous. Replies accept body and isAnonymous. Creation requires a stable Idempotency-Key; a changed payload with the same key returns 409. Writes are limited to 30/minute/account. All current accounts share one campus; reading discussions does not grant course-material access. Replies are chronological, paged 30 at a time, and limited to one level.
 
-Public projections omit author IDs and hide names for anonymous content. OP markers only connect replies with the same anonymity mode as their root, avoiding identity disclosure through mixed named/anonymous replies. Ownership remains stored privately. Moderation/reporting UI is outside this local demo.
+Public projections omit author IDs and hide names for anonymous content. OP markers only connect replies with the same anonymity mode as their root, avoiding identity disclosure through mixed named/anonymous replies. Ownership remains stored privately. Owner controls and report/admin review screens are available in the connected app.
 
 Run `python3 backend/scripts/dev.py migrate`, then `python3 backend/scripts/dev.py seed-community`. The latter is Development-only, uses deterministic sample IDs and a transaction/lock, adds missing seed rows without rewriting real content, and sends no emails. Eight fictional identities have no password, no confirmation and IsActive=false. Ten threads, 26 replies and 178 votes reference existing course labels where available; no imported courses are modified. Missing courses fall back to Campus life. UI labels sample content explicitly. Rerunning restores missing sample activity, so it is not a cleanup command.
 
@@ -129,3 +129,5 @@ Reports and identity-mode-scoped hiding are under /community/posts/{id}/report a
 Activity inbox: replies in followed threads and completed/failed study sessions appear under the bell on Learn and You. All/Unread, read state, live destinations and four saved in-app preferences are available; grouped upvotes are opt-in. The worker dispatches activity independently of generation. Phone push delivery is still pending its development build and credentials.
 
 Practice uses the existing bounded study worker and source permissions. Generic job reads omit hints, solutions and rubrics; owner-only /practice/{job}/progress and task actions reveal them deliberately. Attempts are limited to 20 per task and are idempotent under an account lock. No submitted code execution. The explicit local quality command is python3 backend/scripts/dev.py evaluate-practice (optional --cases ml-en); its pinned three-subject English/French manifest is backend/tests/practice-evaluation.json and its raw evidence stays under ignored .local/evidence/next. Generation success alone is not a quality score.
+
+Saved course conversations are available from Ask AI on a course/PDF and You → Course conversations. Explain, Hint and Check reasoning use fresh authorized sources and recent message excerpts. Sent messages survive reopening; one reply runs at a time, with up to40 turns per conversation. Individual deletion and clear history stop pending replies and preserve practice attempts. Get AI feedback on a saved written/code attempt reviews the submitted text against its task/rubric. Each feedback paragraph identifies saved-work reasoning or cited course sources; code is not executed and feedback is not an official mark.

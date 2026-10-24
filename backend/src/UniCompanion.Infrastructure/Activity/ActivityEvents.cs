@@ -31,7 +31,7 @@ public sealed class ActivityEvents(AppDbContext db, TimeProvider clock)
     public async Task StudyAsync(Guid id, CancellationToken ct)
     {
         var job = await db.StudyJobs.AsNoTracking().SingleAsync(j => j.Id == id, ct);
-        if (job.State is not (JobStates.Succeeded or JobStates.Failed)) return;
+        if (job.Kind == "tutor" || job.State is not (JobStates.Succeeded or JobStates.Failed)) return;
         await AddAsync("study:" + id, job.State == JobStates.Succeeded ? "study_completed" : "study_failed", id, null, [job.OwnerId], ct);
     }
 }

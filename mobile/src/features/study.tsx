@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Pressable, ScrollView, View } from 'react-native';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   Button,
   Chip,
@@ -20,7 +20,7 @@ import {
 import { colors as c } from '../theme';
 import { api, newKey } from '../api/runtime';
 import { errorText } from '../api/client';
-import { jobPoller } from '../api/polling';
+import { useJob } from '../study/use-job';
 import {
   pending,
   type Attempt,
@@ -38,7 +38,7 @@ import { drafts } from '../study/draft-runtime';
 import type { QuizDraft } from '../study/drafts';
 import { PracticePlayer } from './practice';
 import { Citations } from '../study/citations';
-import { StudyArticle, StudyProgress, HistoryEntry } from '../study/presentation';
+import { StudyArticle, StudyProgress, HistoryEntry, openStudy } from '../study/presentation';
 export function StudySetupScreen() {
   const params = useLocalSearchParams<{
     courseId: string;
@@ -201,35 +201,6 @@ export function StudySetupScreen() {
       {!!error && <Notice tone="error">{error}</Notice>}
     </Page>
   );
-}
-function useJob(id: string) {
-  const [job, setJob] = useState<Job | null>(null);
-  const [error, setError] = useState('');
-  const [revision, setRevision] = useState(0);
-  useFocusEffect(
-    useCallback(() => {
-      // Revision explicitly restarts the external polling subscription after a manual retry.
-      void revision;
-      const poller = jobPoller(
-        (signal) => api.request<Job>(`/study-jobs/${id}`, { signal }),
-        (value) => {
-          setJob(value);
-          setError('');
-        },
-        (e) => setError(errorText(e)),
-      );
-      if (AppState.currentState !== 'background') poller.start();
-      const subscription = AppState.addEventListener('change', (state) => {
-        if (state === 'active') poller.start();
-        else poller.stop();
-      });
-      return () => {
-        poller.stop();
-        subscription.remove();
-      };
-    }, [id, revision]),
-  );
-  return { job: job?.id === id ? job : null, error, reload: () => setRevision((x) => x + 1) };
 }
 function QuizSession({
   id,
@@ -511,7 +482,11 @@ function QuizPlayer(props: {
 }
 
 export function JobScreen() {
-  const { id, retryAttemptId } = useLocalSearchParams<{ id: string; retryAttemptId?: string }>();
+  const { id, retryAttemptId, practiceTaskId } = useLocalSearchParams<{
+    id: string;
+    retryAttemptId?: string;
+    practiceTaskId?: string;
+  }>();
   const { job, error, reload } = useJob(id);
   const [submitError, setSubmitError] = useState('');
   const retry = useResource<Attempt>(retryAttemptId ? `/quiz-attempts/${retryAttemptId}` : null);
@@ -519,13 +494,15 @@ export function JobScreen() {
     <Page>
       <Header
         title={
-          job?.kind === 'practice'
-            ? 'Written & coding practice'
-            : job?.kind === 'quiz'
-              ? 'Practice time'
-              : job?.kind === 'summary'
-                ? 'Your summary'
-                : 'Let’s understand it'
+          job?.kind === 'tutor'
+            ? 'Course tutor'
+            : job?.kind === 'practice'
+              ? 'Written & coding practice'
+              : job?.kind === 'quiz'
+                ? 'Practice time'
+                : job?.kind === 'summary'
+                  ? 'Your summary'
+                  : 'Let’s understand it'
         }
       />
       {!!error && (
@@ -537,6 +514,9 @@ export function JobScreen() {
       {!job && !error && <ActivityIndicator color={c.blue} />}
       {job && (
         <>
+          {job.kind === 'tutor' && job.request.conversationId && (
+            <Button label="Open saved conversation" onPress={() => openStudy(job)} />
+          )}
           {job.stale && (
             <Notice>
               This session uses an earlier version of the source materials. Its links open the
@@ -577,7 +557,12 @@ export function JobScreen() {
                 />
               )}
               {job.kind === 'practice' && job.result?.practice && (
-                <PracticePlayer key={id} id={id} artifact={job.result.practice} />
+                <PracticePlayer
+                  key={`${id}:${practiceTaskId || ''}`}
+                  id={id}
+                  artifact={job.result.practice}
+                  initialTaskId={practiceTaskId}
+                />
               )}
               {job.kind === 'quiz' && (
                 <>
@@ -635,11 +620,7 @@ export function HistoryScreen() {
       <ResourceState {...resource} retry={resource.reload} />
       {tab === 'sessions'
         ? sessions.data?.data.map((job) => (
-            <HistoryEntry
-              key={job.id}
-              job={job}
-              onPress={() => router.push({ pathname: '/job', params: { id: job.id } })}
-            />
+            <HistoryEntry key={job.id} job={job} onPress={() => openStudy(job)} />
           ))
         : attempts.data?.data.map((attempt) => (
             <Row

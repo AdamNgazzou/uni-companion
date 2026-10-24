@@ -38,7 +38,12 @@ export type Citation = {
   page: number;
   quote: string;
 };
-export type Paragraph = { heading?: string; text: string; citations: Citation[] };
+export type Paragraph = {
+  heading?: string;
+  text: string;
+  citations: Citation[];
+  basis?: 'saved_work' | 'course_sources';
+};
 export type Question = {
   id: string;
   question: string;
@@ -46,8 +51,9 @@ export type Question = {
   citations: Citation[];
 };
 export type StudyRequest = {
-  kind: 'answer' | 'summary' | 'quiz' | 'practice';
+  kind: 'answer' | 'summary' | 'quiz' | 'practice' | 'tutor';
   question?: string;
+  conversationId?: string | null;
   materialId?: string;
   chapterId?: string;
   language: 'en' | 'fr';
@@ -210,4 +216,49 @@ export type PracticeState = {
     solutionViewedBefore: boolean;
     createdAt: string;
   }[];
+};
+
+export type TutorTurn = {
+  id: string;
+  ordinal: number;
+  question: string;
+  action: 'explain' | 'hint' | 'check';
+  createdAt: string;
+  jobId: string;
+  state: string;
+  stage: string;
+  errorCode?: string | null;
+  result?: Job['result'] | null;
+};
+export type TutorConversation = {
+  id: string;
+  title: string;
+  courseId: string;
+  courseTitle: string;
+  scopeTitle: string;
+  language: 'en' | 'fr';
+  isFeedback: boolean;
+  practice?: {
+    jobId: string;
+    taskId: string;
+    attemptId: string;
+    answer: string;
+    usesEarlierSources: boolean;
+  } | null;
+  turns: TutorTurn[];
+  turnLimit: number;
+};
+export type TutorPage = {
+  data: {
+    id: string;
+    title: string;
+    courseId: string;
+    courseTitle: string;
+    language: string;
+    updatedAt: string;
+    isFeedback: boolean;
+  }[];
+  total: number;
+  page: number;
+  limit: number;
 };

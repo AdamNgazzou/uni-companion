@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Button, Chip, Empty, Field, Header, Icon, Notice, Page, Section, T, layout } from '../ui';
 import { colors as c } from '../theme';
 import { api, newKey } from '../api/runtime';
-import { errorText } from '../api/client';
+import { useOperation } from './operation';
 import type {
   CourseDetail,
   Job,
@@ -20,40 +20,6 @@ import type { PracticeDraft } from '../practice/drafts';
 import { useSession } from '../auth/session';
 import { Citations } from '../study/citations';
 
-// Ignore a late response after Back/account switch, including before navigation.
-function useOperation() {
-  const focus = useRef<AbortController | null>(null);
-  const [busy, setBusy] = useState(false);
-  const locked = useRef(false);
-  const [error, setError] = useState('');
-  useFocusEffect(
-    useCallback(() => {
-      const controller = new AbortController();
-      focus.current = controller;
-      locked.current = false;
-      setBusy(false);
-      return () => controller.abort();
-    }, []),
-  );
-  async function run(action: (signal: AbortSignal) => Promise<void>) {
-    const controller = focus.current;
-    if (locked.current || !controller || controller.signal.aborted) return;
-    locked.current = true;
-    setBusy(true);
-    setError('');
-    try {
-      await action(controller.signal);
-    } catch (e) {
-      if (!controller.signal.aborted) setError(errorText(e));
-    } finally {
-      if (!controller.signal.aborted) {
-        locked.current = false;
-        setBusy(false);
-      }
-    }
-  }
-  return { run, busy, error };
-}
 export function PracticeSetupScreen() {
   const params = useLocalSearchParams<{ courseId: string; materialId?: string }>();
   const course = useResource<CourseDetail>(params.courseId ? `/courses/${params.courseId}` : null);
@@ -213,9 +179,22 @@ function Code({ text }: { text: string }) {
     </ScrollView>
   );
 }
-export function PracticePlayer({ id, artifact }: { id: string; artifact: PracticeArtifact }) {
+export function PracticePlayer({
+  id,
+  artifact,
+  initialTaskId,
+}: {
+  id: string;
+  artifact: PracticeArtifact;
+  initialTaskId?: string;
+}) {
   const progress = useResource<{ tasks: PracticeState[] }>(`/practice/${id}/progress`);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() =>
+    Math.max(
+      0,
+      artifact.tasks.findIndex((task) => task.id === initialTaskId),
+    ),
+  );
   const task = artifact.tasks[index];
   const state = progress.data?.tasks.find((s) => s.id === task?.id);
   return (
@@ -495,6 +474,25 @@ function PracticeWork({
                     : 'Submitted before viewing hints or solution'}
               </T>
               <T selectable>{attempt.answer}</T>
+              <Button
+                label="Get AI feedback"
+                kind="secondary"
+                busy={operation.busy}
+                onPress={() => {
+                  void operation.run(async (signal) => {
+                    const result = await api.request<{ id: string }>(
+                      `/practice/${jobId}/attempts/${attempt.id}/feedback`,
+                      {
+                        method: 'POST',
+                        signal,
+                        headers: { 'Idempotency-Key': 'feedback:' + attempt.id },
+                      },
+                    );
+                    if (!signal.aborted)
+                      router.push({ pathname: '/tutor', params: { id: result.id } });
+                  });
+                }}
+              />
             </View>
           ))}
         </>

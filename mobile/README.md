@@ -35,7 +35,7 @@ npx expo install --check
 npx expo export --platform android --platform web --max-workers 1
 ```
 
-Native phone acceptance remains required for SecureStore capacity, tunnel transport, WebView PDF rendering/page selection, Android Back, keyboard/font scaling and background/reopen recovery. Desktop web rendering and exported Android bundles do not prove those device behaviors. The Discuss tab connects to persisted threads/replies/votes with profile/anonymous posting and labelled fictional sample activity. Student uploads, reporting/moderation tools and notifications remain later features.
+Native phone acceptance remains required for SecureStore capacity, tunnel transport, WebView PDF rendering/page selection, Android Back, keyboard/font scaling and background/reopen recovery. Desktop web rendering and exported Android bundles do not prove those device behaviors. The Discuss tab connects to persisted threads/replies/votes with profile/anonymous posting and labelled fictional sample activity. Student uploads and remote phone push remain pending; reporting, moderation and the in-app Activity inbox are available.
 
 Study notes use topic headings (newly generated summaries), compact page citations and expandable supporting excerpts. History names the course and resource. The original PDF reader supports fit-width, 100–300% zoom and horizontal panning; source links still open physical PDF page numbers.
 
@@ -48,3 +48,5 @@ Post options also allow reports and hiding a participant. Named and anonymous co
 Activity inbox: replies in followed threads and completed/failed study sessions appear under the bell on Learn and You. All/Unread, read state, live destinations and four saved in-app preferences are available; grouped upvotes are opt-in. The worker dispatches activity independently of generation. Phone push delivery is still pending its development build and credentials.
 
 Written exercises & coding labs are available from a joined course or PDF. Choose an indexed PDF, written/coding/mixed, guidance, English/French and an estimated duration. Hints, explicit solution reveal, saved attempts and local drafts survive reopening. The first version supports reasoning/scenario writing and Python 3 standard-library labs run on your own computer; pasted code is stored as text, with no automatic or official grade.
+
+Saved course conversations are available from Ask AI on a course/PDF and You → Course conversations. Explain, Hint and Check reasoning use fresh authorized sources and recent message excerpts. Sent messages survive reopening; one reply runs at a time, with up to40 turns per conversation. Individual deletion and clear history stop pending replies and preserve practice attempts. Get AI feedback on a saved written/code attempt reviews the submitted text against its task/rubric. Each feedback paragraph identifies saved-work reasoning or cited course sources; code is not executed and feedback is not an official mark.

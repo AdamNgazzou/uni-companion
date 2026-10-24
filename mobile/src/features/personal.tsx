@@ -42,6 +42,12 @@ export function ProfileScreen() {
       )}
 
       <Row
+        title="Course conversations"
+        detail="Saved tutor chats and practice feedback"
+        icon="Sparkle"
+        onPress={() => router.push('/tutor')}
+      />
+      <Row
         title="Study history"
         detail="Saved explanations, summaries and quizzes"
         icon="History"

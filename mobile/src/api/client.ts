@@ -223,6 +223,14 @@ export function errorText(error: unknown): string {
       return error.code === 'study_limit'
         ? 'You’ve reached the study limit. Give your current sessions a moment, then try again.'
         : 'You’re doing that a little quickly. Wait a moment and try again.';
+    if (error.code === 'conversation_busy')
+      return 'A reply is still in progress. Refresh the messages to wait for it or stop it.';
+    if (error.code === 'conversation_turn_limit')
+      return 'This conversation has reached 40 messages. Start a new conversation for the next topic.';
+    if (error.code === 'conversation_limit')
+      return 'You have 100 saved conversations. Delete an old conversation before starting another.';
+    if (error.code === 'feedback_scope_too_large')
+      return 'This task and attempt are too long for one feedback reply. Try a shorter attempt or compare with the worked solution.';
     if (error.code === 'question_too_long') return 'Try a shorter question focused on one idea.';
     if (error.code === 'material_processing')
       return 'This document is still being prepared. Please try again later.';

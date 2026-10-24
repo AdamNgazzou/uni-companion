@@ -35,9 +35,38 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<UniCompanion.Core.Practice.PracticeProgress> PracticeProgress => Set<UniCompanion.Core.Practice.PracticeProgress>();
     public DbSet<UniCompanion.Core.Practice.PracticeAttempt> PracticeAttempts => Set<UniCompanion.Core.Practice.PracticeAttempt>();
 
+    public DbSet<UniCompanion.Core.Tutor.TutorConversation> TutorConversations => Set<UniCompanion.Core.Tutor.TutorConversation>();
+    public DbSet<UniCompanion.Core.Tutor.TutorTurn> TutorTurns => Set<UniCompanion.Core.Tutor.TutorTurn>();
+
     protected override void OnModelCreating(ModelBuilder model)
     {
         base.OnModelCreating(model);
+        model.Entity<UniCompanion.Core.Tutor.TutorConversation>(e =>
+        {
+            e.Property(x => x.Title).HasMaxLength(160);
+            e.Property(x => x.Language).HasMaxLength(2);
+            e.Property(x => x.ChapterId).HasMaxLength(100);
+            e.Property(x => x.RequestKey).HasMaxLength(100);
+            e.Property(x => x.RequestHash).HasMaxLength(64);
+            e.HasIndex(x => new { x.OwnerId, x.RequestKey }).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.PracticeAttemptId }).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.UpdatedAt, x.Id });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Course>().WithMany().HasForeignKey(x => x.CourseId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Tutor.TutorTurn>(e =>
+        {
+            e.Property(x => x.RequestKey).HasMaxLength(100);
+            e.Property(x => x.RequestHash).HasMaxLength(64);
+            e.Property(x => x.Question).HasMaxLength(2000);
+            e.Property(x => x.Action).HasMaxLength(20);
+            e.HasIndex(x => new { x.OwnerId, x.RequestKey }).IsUnique();
+            e.HasIndex(x => new { x.ConversationId, x.Ordinal }).IsUnique();
+            e.HasIndex(x => x.JobId).IsUnique();
+            e.HasOne<UniCompanion.Core.Tutor.TutorConversation>().WithMany().HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<StudyJob>().WithMany().HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
         model.Entity<UniCompanion.Core.Practice.PracticeProgress>(e =>
         {
             e.HasKey(x => new { x.JobId, x.OwnerId, x.TaskId });
