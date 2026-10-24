@@ -11,7 +11,30 @@ builder.Services.AddRouting();
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
 builder.Services.AddHostedService<StudyWorker>();
 builder.Services.AddHostedService<ActivityWorker>();
+builder.Services.AddHostedService<ReminderWorker>();
 await builder.Build().RunAsync();
+
+internal sealed class ReminderWorker(IServiceScopeFactory scopes, ILogger<ReminderWorker> logger) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await using var scope = scopes.CreateAsyncScope();
+                if (!await scope.ServiceProvider.GetRequiredService<UniCompanion.Infrastructure.Learning.RevisionReminders>().DispatchNextAsync(stoppingToken))
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+            catch (Exception error)
+            {
+                logger.LogWarning("Revision reminder temporarily unavailable ({ErrorType})", error.GetType().Name);
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+            }
+        }
+    }
+}
 
 internal sealed class StudyWorker(IServiceScopeFactory scopes, ILogger<StudyWorker> logger) : BackgroundService
 {

@@ -15,6 +15,12 @@ export function ProfileScreen() {
       <T>{profile?.email}</T>
       <Section title="Make progress your way" />
       <Row
+        title="Your learning"
+        detail="Your activity, revision queue and study reminders"
+        icon="GraduationCap"
+        onPress={() => router.push('/progress')}
+      />
+      <Row
         title="Activity"
         detail="Replies, followed discussions and finished study sessions"
         icon="Bell"
@@ -49,7 +55,7 @@ export function ProfileScreen() {
       />
       <Row
         title="Study history"
-        detail="Saved explanations, summaries and quizzes"
+        detail="Saved explanations, summaries, quizzes and practice"
         icon="History"
         onPress={() => router.push('/history')}
       />

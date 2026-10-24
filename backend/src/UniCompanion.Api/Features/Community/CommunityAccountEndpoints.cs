@@ -23,13 +23,15 @@ public static partial class CommunityEndpoints
             var post = await Views(Visible(db, Owner(context)).AsNoTracking().Where(p => p.Id == id), db, Owner(context)).SingleOrDefaultAsync(ct);
             return post is null ? Results.NotFound() : Results.Ok(post);
         });
-        routes.MapGet("/accounts/me/discussions", async (string? kind, int? page, HttpContext context, AppDbContext db, CancellationToken ct) =>
+        routes.MapGet("/accounts/me/discussions", async (string? kind, string? q, int? page, HttpContext context, AppDbContext db, CancellationToken ct) =>
         {
-            if (kind is not (null or "threads" or "replies")) return Results.BadRequest();
+            var term = q?.Trim().ToLowerInvariant() ?? "";
+            if (kind is not (null or "threads" or "replies") || term.Length > 100) return Results.BadRequest();
             var owner = Owner(context);
             var visible = Visible(db, owner);
             var query = visible.AsNoTracking().Where(p => p.AuthorId == owner && !p.IsDeleted && (p.ParentId == null || visible.Any(root => root.Id == p.ParentId)));
             query = kind == "replies" ? query.Where(p => p.ParentId != null) : query.Where(p => p.ParentId == null);
+            if (term.Length > 0) query = query.Where(p => p.Title.ToLower().Contains(term) || p.Body.ToLower().Contains(term) || visible.Any(root => root.Id == p.ParentId && root.Title.ToLower().Contains(term)));
             var number = Math.Clamp(page ?? 1, 1, 10000);
             var total = await query.CountAsync(ct);
             var posts = await Views(query.OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Id).Skip((number - 1) * 20).Take(20), db, owner).ToArrayAsync(ct);

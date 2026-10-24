@@ -21,18 +21,28 @@ public static class StudyEndpoints
         });
         group.MapGet("/study-jobs/{id:guid}", GetAsync);
         group.MapGet("/study-artifacts/{id:guid}", GetAsync);
-        group.MapGet("/study-jobs", async (Guid? courseId, string? kind, HttpContext context, AppDbContext db, StudyAccess access, StudyJobs jobs, CancellationToken ct) =>
+        group.MapGet("/study-jobs", async (Guid? courseId, string? kind, string? q, int? page, int? limit, HttpContext context, AppDbContext db, StudyAccess access, StudyJobs jobs, CancellationToken ct) =>
         {
             var owner = Owner(context);
-            var query = db.StudyJobs.AsNoTracking().Where(j => j.OwnerId == owner);
+            var term = q?.Trim() ?? "";
+            if (term.Length > 100 || kind is not (null or "answer" or "summary" or "quiz" or "practice" or "tutor")) return Results.BadRequest();
+            var admin = await (from ur in db.UserRoles join role in db.Roles on ur.RoleId equals role.Id where ur.UserId == owner && role.Name == "Admin" select ur.UserId).AnyAsync(ct);
+            var pattern = "%" + term.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+            var source = term.Length == 0 ? db.StudyJobs : db.StudyJobs.FromSqlInterpolated($"""
+                SELECT j.* FROM "StudyJobs" j JOIN "Courses" c ON c."Id"=j."CourseId"
+                LEFT JOIN "Materials" m ON m."Id"::text=j."RequestJson"->>'materialId'
+                WHERE concat_ws(' ', j."RequestJson"->>'question', c."Title", m."Title") ILIKE {pattern}
+                """);
+            var query = source.AsNoTracking().Where(j => j.OwnerId == owner && (admin || db.CourseMemberships.Any(m => m.CourseId == j.CourseId && m.UserId == owner)));
             if (courseId is { } course) query = query.Where(j => j.CourseId == course);
-            if (kind is { } filter) query = query.Where(j => j.Kind == filter);
-            var rows = await query.OrderByDescending(j => j.CreatedAt).Take(100).ToListAsync(ct);
+            query = kind is { } filter ? query.Where(j => j.Kind == filter) : query.Where(j => j.Kind != "tutor");
+            var number = Math.Clamp(page ?? 1, 1, 10000); var size = Math.Clamp(limit ?? 100, 1, 100); var total = await query.CountAsync(ct);
+            var rows = await query.OrderByDescending(j => j.CreatedAt).ThenBy(j => j.Id).Skip((number - 1) * size).Take(size).ToListAsync(ct);
             var labels = await jobs.DescribeAsync(rows, ct);
             var visible = new List<object>();
             foreach (var job in rows)
                 if (await access.CanReadAsync(job.CourseId, owner, ct)) visible.Add(new { job.Id, job.CourseId, job.Kind, job.State, job.Stage, job.CreatedAt, labels[job.Id].Title, labels[job.Id].CourseTitle, labels[job.Id].ScopeTitle, request = StudyJobs.PublicRequest(JsonSerializer.Deserialize<StudyRequest>(job.RequestJson, StudyJobs.Json)!) });
-            return Results.Ok(new { data = visible });
+            return Results.Ok(new { data = visible, total, page = number, limit = size });
         });
         group.MapPost("/study-jobs/{id:guid}/cancel", async (Guid id, HttpContext context, AppDbContext db, StudyJobs jobs, TimeProvider clock, CancellationToken ct) =>
         {

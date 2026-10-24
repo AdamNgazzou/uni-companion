@@ -225,6 +225,16 @@ export function errorText(error: unknown): string {
         : 'You’re doing that a little quickly. Wait a moment and try again.';
     if (error.code === 'conversation_busy')
       return 'A reply is still in progress. Refresh the messages to wait for it or stop it.';
+    if (error.code === 'reminder_in_quiet_hours')
+      return 'Choose a reminder time outside your quiet hours.';
+    if (error.code === 'invalid_timezone')
+      return 'Choose a valid timezone, such as Africa/Lagos, or use your phone timezone.';
+    if (error.code === 'invalid_reminder')
+      return 'Check the reminder time, timezone and quiet hours, then try again.';
+    if (error.code === 'revision_limit')
+      return 'You have 500 saved concepts. Reuse or edit an existing concept.';
+    if (error.code === 'submit_before_completion')
+      return 'Save an attempt before marking this task complete.';
     if (error.code === 'conversation_turn_limit')
       return 'This conversation has reached 40 messages. Start a new conversation for the next topic.';
     if (error.code === 'conversation_limit')

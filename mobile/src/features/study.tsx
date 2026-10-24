@@ -13,6 +13,7 @@ import {
   Notice,
   Page,
   Row,
+  SearchField,
   Section,
   T,
   layout,
@@ -590,8 +591,9 @@ export function HistoryScreen() {
   const { courseId } = useLocalSearchParams<{ courseId?: string }>();
   const [tab, setTab] = useState<'sessions' | 'attempts'>('sessions');
   const [page, setPage] = useState(1);
-  const sessions = useResource<{ data: Job[] }>(
-    `/study-jobs${courseId ? `?courseId=${courseId}` : ''}`,
+  const [search, setSearch] = useState('');
+  const sessions = useResource<{ data: Job[]; total: number }>(
+    `/study-jobs?page=${page}&limit=20&q=${encodeURIComponent(search.trim())}${courseId ? `&courseId=${courseId}` : ''}`,
   );
   const attempts = useResource<{ data: Attempt[] }>(
     `/quiz-attempts?page=${page}${courseId ? `&courseId=${courseId}` : ''}`,
@@ -609,14 +611,30 @@ export function HistoryScreen() {
         <Chip
           label="Study sessions"
           selected={tab === 'sessions'}
-          onPress={() => setTab('sessions')}
+          onPress={() => {
+            setTab('sessions');
+            setPage(1);
+          }}
         />
         <Chip
           label="Quiz results"
           selected={tab === 'attempts'}
-          onPress={() => setTab('attempts')}
+          onPress={() => {
+            setTab('attempts');
+            setPage(1);
+          }}
         />
       </View>
+      {tab === 'sessions' && (
+        <SearchField
+          value={search}
+          onChangeText={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+          placeholder="Find a course or saved session…"
+        />
+      )}
       <ResourceState {...resource} retry={resource.reload} />
       {tab === 'sessions'
         ? sessions.data?.data.map((job) => (
@@ -637,7 +655,7 @@ export function HistoryScreen() {
           body="Saved study sessions and completed quizzes will appear here."
         />
       )}
-      {tab === 'attempts' && (
+      {(tab === 'attempts' || !!sessions.data?.total) && (
         <View style={layout.inline}>
           <Button
             label="Previous"
@@ -649,7 +667,11 @@ export function HistoryScreen() {
           <Button
             label="Next"
             kind="quiet"
-            disabled={(attempts.data?.data.length || 0) < 20}
+            disabled={
+              tab === 'attempts'
+                ? (attempts.data?.data.length || 0) < 20
+                : page * 20 >= (sessions.data?.total || 0)
+            }
             onPress={() => setPage((p) => p + 1)}
           />
         </View>
@@ -658,10 +680,11 @@ export function HistoryScreen() {
   );
 }
 export function AttemptScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, questionId } = useLocalSearchParams<{ id: string; questionId?: string }>();
   const resource = useResource<Attempt>(`/quiz-attempts/${id}`);
   const attempt = resource.data;
   const [missedOnly, setMissedOnly] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   return (
     <Page>
       <Header title="Your little wins" />
@@ -701,15 +724,22 @@ export function AttemptScreen() {
             <Chip
               label="All questions"
               selected={!missedOnly}
-              onPress={() => setMissedOnly(false)}
+              onPress={() => {
+                setShowAll(true);
+                setMissedOnly(false);
+              }}
             />
             <Chip
               label="What to revisit"
               selected={missedOnly}
-              onPress={() => setMissedOnly(true)}
+              onPress={() => {
+                setShowAll(true);
+                setMissedOnly(true);
+              }}
             />
           </View>
           {attempt.corrections
+            .filter((q) => !questionId || showAll || q.questionId === questionId)
             .filter((q) => !missedOnly || q.selectedOptionId !== q.correctOptionId)
             .map((q, i) => (
               <View

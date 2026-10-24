@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, Chip, Empty, Header, Notice, Page, Row, T } from '../ui';
+import { Button, Chip, Empty, Header, Notice, Page, Row, SearchField, T } from '../ui';
 import { api } from '../api/runtime';
 import { errorText } from '../api/client';
 import type { MyDiscussionPage, SavedItem, Report } from '../api/types';
@@ -11,13 +11,22 @@ import { ResourceState } from './resource-state';
 export function MyDiscussionsScreen() {
   const [kind, setKind] = useState('threads');
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const resource = useResource<MyDiscussionPage>(
-    `/accounts/me/discussions?kind=${kind}&page=${page}`,
+    `/accounts/me/discussions?kind=${kind}&page=${page}&q=${encodeURIComponent(search.trim())}`,
   );
   return (
     <Page>
       <Header title="My discussions" />
       <T>Your contributions, including posts you shared anonymously.</T>
+      <SearchField
+        value={search}
+        onChangeText={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        placeholder="Find your discussion…"
+      />
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {['threads', 'replies'].map((value) => (
           <Chip

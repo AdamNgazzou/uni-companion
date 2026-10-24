@@ -174,7 +174,7 @@ export type ActivityPreferences = {
   upvotes: boolean;
 };
 export type ActivityDestination = {
-  kind: 'study' | 'thread';
+  kind: 'study' | 'thread' | 'revision';
   id: string;
   replyId?: string;
   replyPage?: number;
@@ -206,6 +206,7 @@ export type PracticeState = {
   hints: string[];
   hintCount: number;
   solutionViewed: boolean;
+  completedAt?: string | null;
   solution?: string | null;
   solutionCode?: string | null;
   rubric?: string[] | null;
@@ -261,4 +262,39 @@ export type TutorPage = {
   total: number;
   page: number;
   limit: number;
+};
+
+export type LearningCounts = {
+  savedSessions: number;
+  quizAttempts: number;
+  quizzesAttempted: number;
+  writtenTasksAttempted: number;
+  codingLabsAttempted: number;
+  practiceAttempts: number;
+  assistedTasks: number;
+  selfCompletedTasks: number;
+  feedbackConversations: number;
+};
+export type RevisionCard = {
+  key: string;
+  kind: 'quiz' | 'concept';
+  title: string;
+  topic: string;
+  note: string;
+  state: 'active' | 'snoozed' | 'dismissed';
+  snoozedUntil?: string | null;
+  createdAt: string;
+  courseTitle?: string;
+  attemptId?: string;
+  questionId?: string;
+  originalQuestion?: string;
+};
+export type RevisionPage = { data: RevisionCard[]; total: number; dueCount: number; page: number };
+export type ReminderSettings = {
+  enabled: boolean;
+  minuteOfDay: number;
+  timeZoneId: string;
+  quietStart: number;
+  quietEnd: number;
+  nextDueAt?: string | null;
 };

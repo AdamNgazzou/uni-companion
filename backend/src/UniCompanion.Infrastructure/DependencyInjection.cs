@@ -79,6 +79,8 @@ public static class DependencyInjection
         services.AddScoped<ActivityEvents>();
         services.AddScoped<UniCompanion.Infrastructure.Tutor.TutorConversations>();
         services.AddScoped<ActivityDispatcher>();
+        services.AddScoped<UniCompanion.Infrastructure.Learning.LearningProgress>();
+        services.AddScoped<UniCompanion.Infrastructure.Learning.RevisionReminders>();
         services.AddScoped<StudyComposer>();
         services.AddScoped<StudyProcessor>();
         services.AddSingleton(new PrivateFileStore(Path.Combine(dataRoot, "blobs")));

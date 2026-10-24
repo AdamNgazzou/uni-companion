@@ -454,6 +454,18 @@ function PracticeWork({
       )}
       {!!state.attempts.length && (
         <>
+          <Section title="Your completion choice" />
+          <T variant="small">
+            {state.completedAt
+              ? 'Marked complete by you. This is separate from AI feedback or a quiz score.'
+              : 'When you’re satisfied with your work, you can mark this task complete yourself.'}
+          </T>
+          <Button
+            label={state.completedAt ? 'Mark task unfinished' : 'Mark task complete'}
+            kind="secondary"
+            busy={operation.busy}
+            onPress={() => mutate('/completion', { completed: !state.completedAt })}
+          />
           <Section title="Saved attempts" />
           {state.attempts.map((attempt) => (
             <View

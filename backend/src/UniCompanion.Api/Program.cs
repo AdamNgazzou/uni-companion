@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using UniCompanion.Api.Features.Accounts;
 using UniCompanion.Api.Features.Courses;
 using UniCompanion.Api.Features.Study;
+using UniCompanion.Api.Features.Learning;
 using UniCompanion.Infrastructure;
 using UniCompanion.Infrastructure.Identity;
 using UniCompanion.Infrastructure.Persistence;
@@ -144,6 +145,7 @@ app.MapActivity();
 UniCompanion.Api.Features.Practice.PracticeEndpoints.MapPractice(app);
 UniCompanion.Api.Features.Tutor.TutorEndpoints.MapTutor(app);
 app.MapStudy();
+app.MapLearning();
 await app.RunAsync();
 
 public partial class Program;

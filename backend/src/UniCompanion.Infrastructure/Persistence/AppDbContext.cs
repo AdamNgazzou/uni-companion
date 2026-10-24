@@ -37,10 +37,30 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
 
     public DbSet<UniCompanion.Core.Tutor.TutorConversation> TutorConversations => Set<UniCompanion.Core.Tutor.TutorConversation>();
     public DbSet<UniCompanion.Core.Tutor.TutorTurn> TutorTurns => Set<UniCompanion.Core.Tutor.TutorTurn>();
+    public DbSet<UniCompanion.Core.Learning.RevisionEntry> RevisionEntries => Set<UniCompanion.Core.Learning.RevisionEntry>();
+    public DbSet<UniCompanion.Core.Learning.StudyReminder> StudyReminders => Set<UniCompanion.Core.Learning.StudyReminder>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
         base.OnModelCreating(model);
+        model.Entity<UniCompanion.Core.Learning.RevisionEntry>(e =>
+        {
+            e.HasKey(x => new { x.OwnerId, x.Key });
+            e.Property(x => x.Key).HasMaxLength(120);
+            e.Property(x => x.CreationHash).HasMaxLength(64);
+            e.Property(x => x.Title).HasMaxLength(160);
+            e.Property(x => x.Topic).HasMaxLength(80);
+            e.Property(x => x.Note).HasMaxLength(2000);
+            e.Property(x => x.State).HasMaxLength(20);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Learning.StudyReminder>(e =>
+        {
+            e.HasKey(x => x.OwnerId);
+            e.Property(x => x.TimeZoneId).HasMaxLength(100);
+            e.HasIndex(x => new { x.Enabled, x.NextDueAt });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
         model.Entity<UniCompanion.Core.Tutor.TutorConversation>(e =>
         {
             e.Property(x => x.Title).HasMaxLength(160);

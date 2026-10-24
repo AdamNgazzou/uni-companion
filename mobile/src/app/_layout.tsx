@@ -34,6 +34,9 @@ function Routes() {
         <Stack.Screen name="job" />
         <Stack.Screen name="reader" />
         <Stack.Screen name="history" />
+        <Stack.Screen name="progress" />
+        <Stack.Screen name="revision" />
+        <Stack.Screen name="reminders" />
         <Stack.Screen name="attempt" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="thread" />

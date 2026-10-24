@@ -7,6 +7,7 @@ public sealed class PracticeProgress
     public string TaskId { get; set; } = "";
     public int HintLevel { get; set; }
     public DateTimeOffset? RevealedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
 }
 public sealed class PracticeAttempt
 {

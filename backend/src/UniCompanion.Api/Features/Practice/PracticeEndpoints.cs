@@ -12,6 +12,7 @@ public static class PracticeEndpoints
 {
     public sealed record HintRequest(int Level);
     public sealed record Submission(string? Answer);
+    public sealed record Completion(bool Completed);
     private static string Owner(HttpContext ctx) => ctx.User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     private static async Task<PracticeArtifact> Artifact(StudyJobs jobs, Guid id, string owner, CancellationToken ct)
     {
@@ -28,6 +29,7 @@ public static class PracticeEndpoints
         hints = task.Hints.Take(state?.HintLevel ?? 0),
         hintCount = task.Hints.Length,
         solutionViewed = state?.RevealedAt is not null,
+        completedAt = state?.CompletedAt,
         solution = state?.RevealedAt is not null ? task.Solution : null,
         solutionCode = state?.RevealedAt is not null ? task.SolutionCode : null,
         rubric = state?.RevealedAt is not null ? task.Rubric : null,
@@ -62,6 +64,15 @@ public static class PracticeEndpoints
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             await Lock(db, owner, ct); await Reveal(db, id, owner, task, clock.GetUtcNow(), ct); await tx.CommitAsync(ct);
             return Results.NoContent();
+        });
+        group.MapPut("/tasks/{task}/completion", async (Guid id, string task, Completion request, HttpContext ctx, StudyJobs jobs, AppDbContext db, TimeProvider clock, CancellationToken ct) =>
+        {
+            var owner = Owner(ctx); await TaskAsync(jobs, id, owner, task, ct);
+            await using var tx = await db.Database.BeginTransactionAsync(ct); await Lock(db, owner, ct);
+            if (!await db.PracticeAttempts.AnyAsync(a => a.JobId == id && a.OwnerId == owner && a.TaskId == task, ct)) throw new StudyRequestException(409, "submit_before_completion");
+            var progress = await db.PracticeProgress.SingleAsync(p => p.JobId == id && p.OwnerId == owner && p.TaskId == task, ct);
+            progress.CompletedAt = request.Completed ? progress.CompletedAt ?? clock.GetUtcNow() : null;
+            await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return Results.NoContent();
         });
         group.MapPost("/tasks/{task}/attempts", async (Guid id, string task, Submission request, HttpContext ctx, StudyJobs jobs, AppDbContext db, TimeProvider clock, CancellationToken ct) =>
         {

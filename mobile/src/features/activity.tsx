@@ -87,7 +87,8 @@ export function ActivityScreen() {
       });
       await api.request(`/activity/${id}/read`, { method: 'PUT', signal: controller.signal });
       if (controller.signal.aborted) return;
-      if (destination.kind === 'study')
+      if (destination.kind === 'revision') router.push('/revision');
+      else if (destination.kind === 'study')
         router.push({ pathname: '/job', params: { id: destination.id } });
       else
         router.push({

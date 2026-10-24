@@ -606,6 +606,86 @@ namespace UniCompanion.Infrastructure.Migrations
                     b.ToTable("MaterialVersions");
                 });
 
+            modelBuilder.Entity("UniCompanion.Core.Learning.RevisionEntry", b =>
+                {
+                    b.Property<string>("OwnerId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreationHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset?>("SnoozedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.HasKey("OwnerId", "Key");
+
+                    b.ToTable("RevisionEntries");
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Learning.StudyReminder", b =>
+                {
+                    b.Property<string>("OwnerId")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("MinuteOfDay")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("NextDueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("QuietEnd")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuietStart")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("OwnerId");
+
+                    b.HasIndex("Enabled", "NextDueAt");
+
+                    b.ToTable("StudyReminders");
+                });
+
             modelBuilder.Entity("UniCompanion.Core.Practice.PracticeAttempt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -669,6 +749,9 @@ namespace UniCompanion.Infrastructure.Migrations
                     b.Property<string>("TaskId")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("HintLevel")
                         .HasColumnType("integer");
@@ -1277,6 +1360,24 @@ namespace UniCompanion.Infrastructure.Migrations
                     b.HasOne("UniCompanion.Core.Courses.Material", null)
                         .WithMany()
                         .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Learning.RevisionEntry", b =>
+                {
+                    b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UniCompanion.Core.Learning.StudyReminder", b =>
+                {
+                    b.HasOne("UniCompanion.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
