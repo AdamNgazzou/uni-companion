@@ -17,6 +17,7 @@ data/university-import/
 # .NET, private local backend state, Python/model caches
 **/bin/
 **/obj/
+**/TestResults/
 **/__pycache__/
 **/.venv/
 backend/.local/

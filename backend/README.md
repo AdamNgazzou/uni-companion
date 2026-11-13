@@ -55,7 +55,7 @@ make backend-check
 python3 backend/scripts/dev.py test
 ```
 
-backend-check restores/builds, verifies .NET formatting, and runs offline Python contract tests including an exact helper hash check. test runs API integration tests on disposable, uniquely named companion_test_* databases in the local PostgreSQL instance. It requires `up`; never point it at production. The corpus integration test uses the ignored local snapshot. Existing root make format/check also include mobile checks; native phone testing remains separate.
+backend-check restores/builds, verifies .NET formatting, and runs offline Python contract tests including an exact helper hash check. test runs API integration tests on disposable, uniquely named companion_test_* databases in the local PostgreSQL instance. It requires `up`; never point it at production. The catalogue integration test generates disposable PDF/CSV fixtures; tests do not need the private university snapshot. Subprocess tests can use system Python with `Ai__Python=python3 python3 backend/scripts/dev.py test` from the repository root; actual indexing/generation still requires the configured AI environment. Existing root make format/check also include mobile checks; native phone testing remains separate.
 
 To manage migrations, with ~/.dotnet on PATH, run from backend:
 

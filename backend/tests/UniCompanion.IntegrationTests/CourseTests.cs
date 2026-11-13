@@ -46,14 +46,9 @@ public sealed class CourseTests(ApiFixture app) : IClassFixture<ApiFixture>
     }
 
     [Fact]
-    public async Task RealSnapshotIsIdempotentAndDownloadsRequireMembership()
+    public async Task CatalogueImportIsIdempotentAndDownloadsRequireMembership()
     {
-        var catalogue = Path.GetFullPath("../../../../../data/university-import/catalogue.json", AppContext.BaseDirectory);
-        // AppContext is backend/tests/<project>/bin/Debug/net10.0: walk to repository explicitly.
-        var repo = new DirectoryInfo(AppContext.BaseDirectory);
-        while (repo is not null && !File.Exists(Path.Combine(repo.FullName, "PRODUCT.md"))) repo = repo.Parent;
-        Assert.NotNull(repo);
-        catalogue = Path.Combine(repo.FullName, "data/university-import/catalogue.json");
+        using var snapshot = new CatalogueFixture();
         Guid courseId;
         Guid materialId;
         string expectedHash;
@@ -61,15 +56,16 @@ public sealed class CourseTests(ApiFixture app) : IClassFixture<ApiFixture>
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var importer = ActivatorUtilities.CreateInstance<CatalogueImporter>(scope.ServiceProvider);
-            Assert.Equal((12, 35), await importer.ImportAsync(catalogue));
-            Assert.Equal((12, 35), await importer.ImportAsync(catalogue));
-            Assert.Equal(12, await db.Courses.CountAsync(c => c.IsCurated));
-            Assert.Equal(35, await db.Materials.CountAsync());
-            Assert.Equal(35, await db.MaterialVersions.CountAsync());
+            Assert.Equal((1, 2), await importer.ImportAsync(snapshot.Path));
+            Assert.Equal((1, 2), await importer.ImportAsync(snapshot.Path));
+            Assert.Equal(1, await db.Courses.CountAsync(c => c.IsCurated));
+            Assert.Equal(2, await db.Materials.CountAsync());
+            Assert.Equal(2, await db.MaterialVersions.CountAsync());
             var material = await db.Materials.FirstAsync(m => m.ContentType == "application/pdf");
             courseId = material.CourseId;
             materialId = material.Id;
             expectedHash = (await db.MaterialVersions.SingleAsync(v => v.Id == material.CurrentVersionId)).Sha256;
+            Assert.Equal(snapshot.PdfHash, expectedHash);
         }
         var member = await app.RegisterAsync();
         var stranger = await app.RegisterAsync();
