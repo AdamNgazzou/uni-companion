@@ -146,6 +146,7 @@ UniCompanion.Api.Features.Practice.PracticeEndpoints.MapPractice(app);
 UniCompanion.Api.Features.Tutor.TutorEndpoints.MapTutor(app);
 app.MapStudy();
 app.MapLearning();
+UniCompanion.Api.Features.Push.PushEndpoints.MapPush(app);
 await app.RunAsync();
 
 public partial class Program;

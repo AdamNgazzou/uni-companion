@@ -4,6 +4,7 @@ import { ApiError, errorText } from '../api/client';
 import { drafts } from '../study/draft-runtime';
 import { practiceDrafts } from '../practice/draft-runtime';
 import { composerDrafts } from '../community/draft-runtime';
+import { push } from '../push/runtime';
 import type { Profile } from '../api/types';
 type Session = {
   profile: Profile | null;
@@ -33,7 +34,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     api.onInvalidSession = () => {
       setProfile(null);
-      void Promise.allSettled([drafts.clear(), composerDrafts.clear(), practiceDrafts.clear()]);
+      void Promise.allSettled([
+        drafts.clear(),
+        composerDrafts.clear(),
+        practiceDrafts.clear(),
+        push.detach(),
+      ]);
     };
     // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronize the external secure store on mount
     void restore();
@@ -43,7 +49,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
   async function login(email: string, password: string) {
     setProfile(null);
-    await Promise.all([drafts.clear(), composerDrafts.clear(), practiceDrafts.clear()]);
+    await Promise.all([
+      drafts.clear(),
+      composerDrafts.clear(),
+      practiceDrafts.clear(),
+      push.detach(),
+    ]);
     await api.signIn(email, password);
     setProfile(await api.request<Profile>('/accounts/me'));
     setError('');
@@ -51,6 +62,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   async function logout() {
     setProfile(null);
     const results = await Promise.allSettled([
+      push.detach(),
       drafts.clear(),
       composerDrafts.clear(),
       practiceDrafts.clear(),

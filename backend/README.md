@@ -1,5 +1,7 @@
 # Uni Companion backend
 
+For a guided code review, read [Architecture and engineering decisions](ARCHITECTURE.md). For Java-to-C# explanations, see [the learning guide](../docs/guides/backend-dotnet-for-java-engineers.md).
+
 .NET 10 API with ASP.NET Core Identity, EF Core/PostgreSQL, private content-addressed files, and an unchanged supplied Gemini helper behind a private Python adapter. The connected Expo app is in ../mobile.
 
 ## First run
@@ -130,6 +132,14 @@ Activity inbox: replies in followed threads and completed/failed study sessions 
 
 Practice uses the existing bounded study worker and source permissions. Generic job reads omit hints, solutions and rubrics; owner-only /practice/{job}/progress and task actions reveal them deliberately. Attempts are limited to 20 per task and are idempotent under an account lock. No submitted code execution. The explicit local quality command is python3 backend/scripts/dev.py evaluate-practice (optional --cases ml-en); its pinned three-subject English/French manifest is backend/tests/practice-evaluation.json and its raw evidence stays under ignored .local/evidence/next. Generation success alone is not a quality score.
 
-Saved course conversations are available from Ask AI on a course/PDF and You → Course conversations. Explain, Hint and Check reasoning use fresh authorized sources and recent message excerpts. Sent messages survive reopening; one reply runs at a time, with up to40 turns per conversation. Individual deletion and clear history stop pending replies and preserve practice attempts. Get AI feedback on a saved written/code attempt reviews the submitted text against its task/rubric. Each feedback paragraph identifies saved-work reasoning or cited course sources; code is not executed and feedback is not an official mark.
+Saved course conversations are available from Ask AI on a course/PDF and You → Course conversations. Explain, Hint and Check reasoning use fresh authorized sources and recent message excerpts. Sent messages survive reopening; one reply runs at a time, with up to 40 turns per conversation. Individual deletion and clear history stop pending replies and preserve practice attempts. Get AI feedback on a saved written/code attempt reviews the submitted text against its task/rubric. Each feedback paragraph identifies saved-work reasoning or cited course sources; code is not executed and feedback is not an official mark.
 
 You → Your learning shows actual quiz/written/lab submissions, assistance, self-marked completion and AI feedback separately. The revision queue uses each quiz’s latest saved attempt and concepts you save yourself; edit topic labels/notes, snooze, dismiss or restore them. Correcting a missed question removes it from the queue. Study history and My discussions are searchable. Daily reminders start off, use your chosen timezone and quiet hours, and appear in Activity while the local worker runs. Phone push still requires a configured development build.
+
+Phone push transport is prepared but disabled until the actual Expo project, FCM credentials and physical development build are configured. See [phone notification setup](../docs/guides/phone-notifications.md). `npm start` stays on Expo Go; `npm run start:dev` is for the installed development build.
+
+## Fast unit tests and CI
+
+From backend/, `dotnet test tests/UniCompanion.UnitTests` checks scope disposal, worker shutdown/recovery and assembly dependency boundaries without PostgreSQL or external services. The integration suite still requires real PostgreSQL and creates disposable databases. `Ai__Python=python3 make backend-test` from the repository root can use a system interpreter for deterministic fixture scripts; actual AI operations require the full private runtime environment.
+
+The source workflow at `.github/workflows/backend.yml` prepares locked restore, formatting/build checks, offline Python contracts, Release build and both test projects with an ephemeral pgvector service. It is not a deployment workflow. A successful GitHub run is not claimed before it is actually executed.

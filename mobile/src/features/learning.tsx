@@ -393,8 +393,14 @@ function ReminderForm({ initial }: { initial: ReminderSettings }) {
     <>
       <T>
         Choose a gentle daily reminder. These reminders appear in Activity while the study service
-        is running. Phone push delivery still needs setup.
+        is running. Phone alerts follow your phone notification settings.
       </T>
+      <Row
+        title="Phone notifications"
+        detail="Device permission and private alerts"
+        icon="Bell"
+        onPress={() => router.push('/phone-notifications')}
+      />
       <View style={layout.inline}>
         <Chip
           label="Off"

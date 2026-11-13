@@ -5,8 +5,9 @@ import { Button, Chip, Empty, Header, Icon, IconButton, Notice, Page, T } from '
 import { colors as c } from '../theme';
 import { api } from '../api/runtime';
 import { errorText } from '../api/client';
-import type { ActivityPage, ActivityPreferences, ActivityDestination } from '../api/types';
+import type { ActivityPage, ActivityPreferences } from '../api/types';
 import { useResource } from './hooks';
+import { openActivity } from '../activity/navigation';
 import { ResourceState } from './resource-state';
 
 export function ActivityBell() {
@@ -82,23 +83,7 @@ export function ActivityScreen() {
     setBusy(true);
     setError('');
     try {
-      const destination = await api.request<ActivityDestination>(`/activity/${id}/destination`, {
-        signal: controller.signal,
-      });
-      await api.request(`/activity/${id}/read`, { method: 'PUT', signal: controller.signal });
-      if (controller.signal.aborted) return;
-      if (destination.kind === 'revision') router.push('/revision');
-      else if (destination.kind === 'study')
-        router.push({ pathname: '/job', params: { id: destination.id } });
-      else
-        router.push({
-          pathname: '/thread',
-          params: {
-            id: destination.id,
-            replyId: destination.replyId || '',
-            replyPage: String(destination.replyPage || 1),
-          },
-        });
+      await openActivity(id, controller.signal);
     } catch (e) {
       if (!controller.signal.aborted) setError(errorText(e));
     } finally {
@@ -169,13 +154,15 @@ export function ActivityScreen() {
           >
             <Icon
               name={
-                item.kind === 'reply'
-                  ? 'MessageCircle'
-                  : item.kind === 'upvote'
-                    ? 'ArrowUp'
-                    : item.kind === 'study_failed'
-                      ? 'AlertCircle'
-                      : 'CheckCircle2'
+                item.kind === 'revision_reminder'
+                  ? 'Bell'
+                  : item.kind === 'reply'
+                    ? 'MessageCircle'
+                    : item.kind === 'upvote'
+                      ? 'ArrowUp'
+                      : item.kind === 'study_failed'
+                        ? 'AlertCircle'
+                        : 'CheckCircle2'
               }
               color={c.blue}
               size={22}

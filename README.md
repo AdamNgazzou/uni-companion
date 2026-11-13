@@ -2,6 +2,10 @@
 
 A university course companion built with React Native / Expo SDK 58, a .NET 10 API and worker, PostgreSQL/pgvector and a private Python AI bridge. The connected app provides real accounts, course membership, private original PDFs, grounded Q&A, saved summaries, generated quizzes, server grading and attempt history. Its approved cobalt/orange identity, Nunito typography and star mascot remain in the shared native components.
 
+## Backend engineering
+
+Start with the [architecture and code review guide](backend/ARCHITECTURE.md) for request flows, dependency boundaries, failure recovery and executable proofs. The [backend CI workflow](.github/workflows/backend.yml) runs unit tests and real PostgreSQL integration tests without calling external AI or push providers.
+
 ## Run locally
 
 Backend prerequisites and first-time setup: [backend/README.md](backend/README.md). The authorized course snapshot and private configuration are ignored by git and already present in this workspace.
@@ -85,6 +89,8 @@ Activity inbox: replies in followed threads and completed/failed study sessions 
 
 Written exercises & coding labs are available from a joined course or PDF. Choose an indexed PDF, written/coding/mixed, guidance, English/French and an estimated duration. Hints, explicit solution reveal, saved attempts and local drafts survive reopening. The first version supports reasoning/scenario writing and Python 3 standard-library labs run on your own computer; pasted code is stored as text, with no automatic or official grade.
 
-Saved course conversations are available from Ask AI on a course/PDF and You → Course conversations. Explain, Hint and Check reasoning use fresh authorized sources and recent message excerpts. Sent messages survive reopening; one reply runs at a time, with up to40 turns per conversation. Individual deletion and clear history stop pending replies and preserve practice attempts. Get AI feedback on a saved written/code attempt reviews the submitted text against its task/rubric. Each feedback paragraph identifies saved-work reasoning or cited course sources; code is not executed and feedback is not an official mark.
+Saved course conversations are available from Ask AI on a course/PDF and You → Course conversations. Explain, Hint and Check reasoning use fresh authorized sources and recent message excerpts. Sent messages survive reopening; one reply runs at a time, with up to 40 turns per conversation. Individual deletion and clear history stop pending replies and preserve practice attempts. Get AI feedback on a saved written/code attempt reviews the submitted text against its task/rubric. Each feedback paragraph identifies saved-work reasoning or cited course sources; code is not executed and feedback is not an official mark.
 
 You → Your learning shows actual quiz/written/lab submissions, assistance, self-marked completion and AI feedback separately. The revision queue uses each quiz’s latest saved attempt and concepts you save yourself; edit topic labels/notes, snooze, dismiss or restore them. Correcting a missed question removes it from the queue. Study history and My discussions are searchable. Daily reminders start off, use your chosen timezone and quiet hours, and appear in Activity while the local worker runs. Phone push still requires a configured development build.
+
+Phone push transport is prepared but disabled until the actual Expo project, FCM credentials and physical development build are configured. See [phone notification setup](docs/guides/phone-notifications.md). `npm start` stays on Expo Go; `npm run start:dev` is for the installed development build.

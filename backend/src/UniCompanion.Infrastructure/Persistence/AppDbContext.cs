@@ -39,10 +39,35 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<UniCompanion.Core.Tutor.TutorTurn> TutorTurns => Set<UniCompanion.Core.Tutor.TutorTurn>();
     public DbSet<UniCompanion.Core.Learning.RevisionEntry> RevisionEntries => Set<UniCompanion.Core.Learning.RevisionEntry>();
     public DbSet<UniCompanion.Core.Learning.StudyReminder> StudyReminders => Set<UniCompanion.Core.Learning.StudyReminder>();
+    public DbSet<UniCompanion.Core.Push.PushDevice> PushDevices => Set<UniCompanion.Core.Push.PushDevice>();
+    public DbSet<UniCompanion.Core.Push.PushDelivery> PushDeliveries => Set<UniCompanion.Core.Push.PushDelivery>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
         base.OnModelCreating(model);
+        model.Entity<UniCompanion.Core.Push.PushDevice>(e =>
+        {
+            e.Property(x => x.SecretHash).HasMaxLength(64);
+            e.Property(x => x.TokenHash).HasMaxLength(64);
+            e.Property(x => x.ProtectedToken).HasMaxLength(4000);
+            e.Property(x => x.SecurityStamp).HasMaxLength(200);
+            e.Property(x => x.Platform).HasMaxLength(20);
+            e.Property(x => x.TimeZoneId).HasMaxLength(100);
+            e.HasIndex(x => x.TokenHash).IsUnique().HasFilter("\"Enabled\"");
+            e.HasIndex(x => new { x.OwnerId, x.Enabled, x.LastSeenAt });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Push.PushDelivery>(e =>
+        {
+            e.Property(x => x.State).HasMaxLength(20);
+            e.Property(x => x.TicketId).HasMaxLength(200);
+            e.Property(x => x.ErrorCode).HasMaxLength(100);
+            e.HasIndex(x => new { x.DeviceId, x.Binding, x.ActivityId, x.ActivityUpdatedAt }).IsUnique();
+            e.HasIndex(x => new { x.State, x.NextAt, x.LeaseUntil });
+            e.HasOne<UniCompanion.Core.Push.PushDevice>().WithMany().HasForeignKey(x => x.DeviceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<ActivityItem>().WithMany().HasForeignKey(x => x.ActivityId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
         model.Entity<UniCompanion.Core.Learning.RevisionEntry>(e =>
         {
             e.HasKey(x => new { x.OwnerId, x.Key });

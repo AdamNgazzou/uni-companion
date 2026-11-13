@@ -35,6 +35,7 @@ public sealed class ApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
     private string connection = "";
     public TestEmail Email { get; } = new();
     public TestGeneration Generation { get; } = new();
+    public TestPushGateway Push { get; } = new();
     public int AccountRequestsPerMinute { get; init; } = 10000;
     public HttpClient Client { get; private set; } = null!;
     public const string Password = "Companion-Test-2026!";
@@ -61,6 +62,8 @@ public sealed class ApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
             services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataRoot, "keys")));
             services.RemoveAll<IQueryEmbedding>();
             services.AddSingleton<IQueryEmbedding, FakeEmbedding>();
+            services.RemoveAll<UniCompanion.Core.Push.IPushGateway>();
+            services.AddSingleton<UniCompanion.Core.Push.IPushGateway>(Push);
             services.RemoveAll<ITextGeneration>();
             services.AddSingleton<ITextGeneration>(Generation);
             services.RemoveAll<IAccountEmail>();

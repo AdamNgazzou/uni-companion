@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { push } from '../push/runtime';
+import { openActivity } from '../activity/navigation';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
@@ -9,6 +11,16 @@ import { colors as c } from '../theme';
 import { T } from '../ui';
 function Routes() {
   const { profile, ready } = useSession();
+  useEffect(() => {
+    let active = true;
+    const stop = push.watch(ready ? profile?.id || null : null, (id) =>
+      openActivity(id, undefined, () => active),
+    );
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [profile?.id, ready]);
   if (!ready)
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -37,6 +49,7 @@ function Routes() {
         <Stack.Screen name="progress" />
         <Stack.Screen name="revision" />
         <Stack.Screen name="reminders" />
+        <Stack.Screen name="phone-notifications" />
         <Stack.Screen name="attempt" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="thread" />

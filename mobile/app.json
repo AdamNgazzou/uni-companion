@@ -30,7 +30,14 @@
       "expo-router",
       "expo-secure-store",
       "expo-asset",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "color": "#335BFF",
+          "defaultChannel": "activity"
+        }
+      ]
     ],
     "scheme": "unicompanion"
   }

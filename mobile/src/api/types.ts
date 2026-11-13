@@ -153,7 +153,7 @@ export type Report = {
 };
 export type ActivityItem = {
   id: string;
-  kind: 'reply' | 'upvote' | 'study_completed' | 'study_failed';
+  kind: 'reply' | 'upvote' | 'study_completed' | 'study_failed' | 'revision_reminder';
   title: string;
   detail: string;
   createdAt: string;

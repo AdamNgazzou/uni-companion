@@ -129,6 +129,12 @@ export function SettingsScreen() {
         icon="Bell"
         onPress={() => router.push('/activity-settings')}
       />
+      <Row
+        title="Phone notifications"
+        detail="Device permission and private push previews"
+        icon="Bell"
+        onPress={() => router.push('/phone-notifications')}
+      />
       <Section title="Change password" />
       <Field
         label="Current password"
