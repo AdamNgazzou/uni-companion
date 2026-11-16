@@ -1,0 +1,72 @@
+name: Backend quality
+
+on:
+  push:
+    branches: [main, 'feat/**']
+    paths: ['backend/**', 'Makefile', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', 'Makefile', '.github/workflows/backend.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      DOTNET_PROCESSOR_COUNT: '2'
+      # Ephemeral service credentials, never a production connection.
+      ConnectionStrings__Database: Host=localhost;Port=55432;Database=companion;Username=companion;Password=ci-test-only
+      Ai__Python: python3
+    services:
+      database:
+        image: pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
+        env:
+          POSTGRES_USER: companion
+          POSTGRES_PASSWORD: ci-test-only
+          POSTGRES_DB: companion
+        ports: ['55432:5432']
+        options: >-
+          --health-cmd "pg_isready -U companion -d companion"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: backend/global.json
+          cache: true
+          cache-dependency-path: backend/**/packages.lock.json
+      - name: Install fixture Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install offline test dependency
+        run: python3 -m pip install requests==2.32.5
+      - name: Prepare isolated local configuration
+        run: python3 backend/scripts/dev.py setup
+      - name: Locked restore, formatting, build and Python contracts
+        run: make backend-check
+      - name: Build Release with warnings as errors
+        working-directory: backend
+        run: dotnet build UniCompanion.sln --configuration Release --no-restore --disable-build-servers -m:1
+      - name: Unit and real PostgreSQL integration tests
+        working-directory: backend
+        run: dotnet test UniCompanion.sln --configuration Release --no-build --no-restore --logger trx --results-directory TestResults --disable-build-servers -m:1
+      - name: Save test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-test-results
+          path: backend/TestResults/**/*.trx
+          if-no-files-found: ignore
+          retention-days: 7

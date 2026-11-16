@@ -2,6 +2,10 @@
 
 A university course companion built with React Native / Expo SDK 58, a .NET 10 API and worker, PostgreSQL/pgvector and a private Python AI bridge. The connected app provides real accounts, course membership, private original PDFs, grounded Q&A, saved summaries, generated quizzes, server grading and attempt history. Its approved cobalt/orange identity, Nunito typography and star mascot remain in the shared native components.
 
+## Backend engineering
+
+Start with the [architecture and code review guide](backend/ARCHITECTURE.md) for request flows, dependency boundaries, failure recovery and executable proofs. The [backend CI workflow](.github/workflows/backend.yml) runs unit tests and real PostgreSQL integration tests without calling external AI or push providers.
+
 ## Run locally
 
 Backend prerequisites and first-time setup: [backend/README.md](backend/README.md). The authorized course snapshot and private configuration are ignored by git and already present in this workspace.
@@ -29,8 +33,8 @@ Study jobs require the separate worker. Closing the app leaves jobs running; reo
 
 - Learn: discover/join courses, read original PDFs, ask questions, summarise a document/chapter and practise 5/10-question English/French quizzes.
 - Study: readable notes with topic headings, expandable source excerpts, contextual history, and PDF zoom/pan.
-- You: edit your name, change your password, revisit study sessions and quiz corrections, or retry missed questions.
-- Discuss: persisted campus/course threads, replies, up/down/remove votes, Recent/Top and kind/course filters, plus profile or anonymous posting. Fictional sample content is labelled; uploads, reports/moderation tools and notifications remain later work.
+- You: edit your name/password, revisit study sessions and quiz corrections, retry missed questions, find your threads/replies and bookmarked resources/discussions.
+- Discuss: persisted campus/course threads, replies, up/down/remove votes, Recent/Top and kind/course filters, plus profile or anonymous posting. Fictional sample content is labelled. Follow/mute threads, edit/delete your contributions, select a helpful reply, report content and hide participants. Basic report review is admin-only. Uploads and notifications remain later work.
 - Admin: course import/bootstrap and recognition are backend operations. There is no connected admin impersonation switch, fake verification code or demo-content fallback.
 
 Admin curated identifies admin-created courses. Recognised identifies admin-reviewed student content while retaining authorship; it does not mean university accreditation. Initial registration assigns Horizon University without enrollment verification.
@@ -66,6 +70,8 @@ make backend-test
 make bundle
 ```
 
+On this RAM-limited local database, use `DOTNET_PROCESSOR_COUNT=1 make backend-test` to avoid overlapping fixture migrations; explicit concurrency tests still exercise simultaneous requests.
+
 Checks include locked .NET restore/build/format, offline Python contracts, mobile format/lint/types and focused client tests. Backend integration tests use disposable real PostgreSQL databases; they never migrate the development database. Bundle exports Android/web without launching a device. `npx expo-doctor` and `npx expo install --check` validate SDK dependencies.
 
 Real generation/source review and desktop web smoke are separate from deterministic tests. Physical Expo Go acceptance remains required for native SecureStore, tunnel/PDF compatibility, keyboard, Android Back, font scaling and background/reopen behavior. There is no production deployment. Stop API/worker/Metro with Ctrl+C and this project's containers with `python3 backend/scripts/dev.py down` to free RAM without deleting data.
@@ -78,3 +84,13 @@ python3 backend/scripts/dev.py seed-community
 ```
 
 The development-only command adds eight disabled, passwordless fictional student identities, ten sample threads, 26 replies and 178 votes. It is repeatable and leaves real users/content unchanged. Open Discuss while signed in to explore or add real replies/posts. Sample identities are not login accounts.
+
+Activity inbox: replies in followed threads and completed/failed study sessions appear under the bell on Learn and You. All/Unread, read state, live destinations and four saved in-app preferences are available; grouped upvotes are opt-in. The worker dispatches activity independently of generation. Phone push delivery is still pending its development build and credentials.
+
+Written exercises & coding labs are available from a joined course or PDF. Choose an indexed PDF, written/coding/mixed, guidance, English/French and an estimated duration. Hints, explicit solution reveal, saved attempts and local drafts survive reopening. The first version supports reasoning/scenario writing and Python 3 standard-library labs run on your own computer; pasted code is stored as text, with no automatic or official grade.
+
+Saved course conversations are available from Ask AI on a course/PDF and You → Course conversations. Explain, Hint and Check reasoning use fresh authorized sources and recent message excerpts. Sent messages survive reopening; one reply runs at a time, with up to 40 turns per conversation. Individual deletion and clear history stop pending replies and preserve practice attempts. Get AI feedback on a saved written/code attempt reviews the submitted text against its task/rubric. Each feedback paragraph identifies saved-work reasoning or cited course sources; code is not executed and feedback is not an official mark.
+
+You → Your learning shows actual quiz/written/lab submissions, assistance, self-marked completion and AI feedback separately. The revision queue uses each quiz’s latest saved attempt and concepts you save yourself; edit topic labels/notes, snooze, dismiss or restore them. Correcting a missed question removes it from the queue. Study history and My discussions are searchable. Daily reminders start off, use your chosen timezone and quiet hours, and appear in Activity while the local worker runs. Phone push still requires a configured development build.
+
+Phone push transport is prepared but disabled until the actual Expo project, FCM credentials and physical development build are configured. See [phone notification setup](docs/guides/phone-notifications.md). `npm start` stays on Expo Go; `npm run start:dev` is for the installed development build.

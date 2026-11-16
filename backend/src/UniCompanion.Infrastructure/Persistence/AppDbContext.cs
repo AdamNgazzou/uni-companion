@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using UniCompanion.Core.Courses;
 using UniCompanion.Core.Community;
+using UniCompanion.Core.Activity;
 using UniCompanion.Core.Study;
 using UniCompanion.Infrastructure.Identity;
 
@@ -23,16 +24,169 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
 
     public DbSet<CommunityPost> CommunityPosts => Set<CommunityPost>();
     public DbSet<CommunityVote> CommunityVotes => Set<CommunityVote>();
+    public DbSet<ThreadSubscription> ThreadSubscriptions => Set<ThreadSubscription>();
+    public DbSet<SavedItem> SavedItems => Set<SavedItem>();
+    public DbSet<CommunityBlock> CommunityBlocks => Set<CommunityBlock>();
+    public DbSet<CommunityReport> CommunityReports => Set<CommunityReport>();
+    public DbSet<ActivityEvent> ActivityEvents => Set<ActivityEvent>();
+    public DbSet<ActivityItem> ActivityItems => Set<ActivityItem>();
+    public DbSet<ActivityPreference> ActivityPreferences => Set<ActivityPreference>();
+
+    public DbSet<UniCompanion.Core.Practice.PracticeProgress> PracticeProgress => Set<UniCompanion.Core.Practice.PracticeProgress>();
+    public DbSet<UniCompanion.Core.Practice.PracticeAttempt> PracticeAttempts => Set<UniCompanion.Core.Practice.PracticeAttempt>();
+
+    public DbSet<UniCompanion.Core.Tutor.TutorConversation> TutorConversations => Set<UniCompanion.Core.Tutor.TutorConversation>();
+    public DbSet<UniCompanion.Core.Tutor.TutorTurn> TutorTurns => Set<UniCompanion.Core.Tutor.TutorTurn>();
+    public DbSet<UniCompanion.Core.Learning.RevisionEntry> RevisionEntries => Set<UniCompanion.Core.Learning.RevisionEntry>();
+    public DbSet<UniCompanion.Core.Learning.StudyReminder> StudyReminders => Set<UniCompanion.Core.Learning.StudyReminder>();
+    public DbSet<UniCompanion.Core.Push.PushDevice> PushDevices => Set<UniCompanion.Core.Push.PushDevice>();
+    public DbSet<UniCompanion.Core.Push.PushDelivery> PushDeliveries => Set<UniCompanion.Core.Push.PushDelivery>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
         base.OnModelCreating(model);
+        model.Entity<UniCompanion.Core.Push.PushDevice>(e =>
+        {
+            e.Property(x => x.SecretHash).HasMaxLength(64);
+            e.Property(x => x.TokenHash).HasMaxLength(64);
+            e.Property(x => x.ProtectedToken).HasMaxLength(4000);
+            e.Property(x => x.SecurityStamp).HasMaxLength(200);
+            e.Property(x => x.Platform).HasMaxLength(20);
+            e.Property(x => x.TimeZoneId).HasMaxLength(100);
+            e.HasIndex(x => x.TokenHash).IsUnique().HasFilter("\"Enabled\"");
+            e.HasIndex(x => new { x.OwnerId, x.Enabled, x.LastSeenAt });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Push.PushDelivery>(e =>
+        {
+            e.Property(x => x.State).HasMaxLength(20);
+            e.Property(x => x.TicketId).HasMaxLength(200);
+            e.Property(x => x.ErrorCode).HasMaxLength(100);
+            e.HasIndex(x => new { x.DeviceId, x.Binding, x.ActivityId, x.ActivityUpdatedAt }).IsUnique();
+            e.HasIndex(x => new { x.State, x.NextAt, x.LeaseUntil });
+            e.HasOne<UniCompanion.Core.Push.PushDevice>().WithMany().HasForeignKey(x => x.DeviceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<ActivityItem>().WithMany().HasForeignKey(x => x.ActivityId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Learning.RevisionEntry>(e =>
+        {
+            e.HasKey(x => new { x.OwnerId, x.Key });
+            e.Property(x => x.Key).HasMaxLength(120);
+            e.Property(x => x.CreationHash).HasMaxLength(64);
+            e.Property(x => x.Title).HasMaxLength(160);
+            e.Property(x => x.Topic).HasMaxLength(80);
+            e.Property(x => x.Note).HasMaxLength(2000);
+            e.Property(x => x.State).HasMaxLength(20);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Learning.StudyReminder>(e =>
+        {
+            e.HasKey(x => x.OwnerId);
+            e.Property(x => x.TimeZoneId).HasMaxLength(100);
+            e.HasIndex(x => new { x.Enabled, x.NextDueAt });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Tutor.TutorConversation>(e =>
+        {
+            e.Property(x => x.Title).HasMaxLength(160);
+            e.Property(x => x.Language).HasMaxLength(2);
+            e.Property(x => x.ChapterId).HasMaxLength(100);
+            e.Property(x => x.RequestKey).HasMaxLength(100);
+            e.Property(x => x.RequestHash).HasMaxLength(64);
+            e.HasIndex(x => new { x.OwnerId, x.RequestKey }).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.PracticeAttemptId }).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.UpdatedAt, x.Id });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Course>().WithMany().HasForeignKey(x => x.CourseId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Tutor.TutorTurn>(e =>
+        {
+            e.Property(x => x.RequestKey).HasMaxLength(100);
+            e.Property(x => x.RequestHash).HasMaxLength(64);
+            e.Property(x => x.Question).HasMaxLength(2000);
+            e.Property(x => x.Action).HasMaxLength(20);
+            e.HasIndex(x => new { x.OwnerId, x.RequestKey }).IsUnique();
+            e.HasIndex(x => new { x.ConversationId, x.Ordinal }).IsUnique();
+            e.HasIndex(x => x.JobId).IsUnique();
+            e.HasOne<UniCompanion.Core.Tutor.TutorConversation>().WithMany().HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<StudyJob>().WithMany().HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Practice.PracticeProgress>(e =>
+        {
+            e.HasKey(x => new { x.JobId, x.OwnerId, x.TaskId });
+            e.Property(x => x.TaskId).HasMaxLength(40);
+            e.HasOne<StudyJob>().WithMany().HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<UniCompanion.Core.Practice.PracticeAttempt>(e =>
+        {
+            e.Property(x => x.Key).HasMaxLength(100);
+            e.Property(x => x.RequestHash).HasMaxLength(64);
+            e.Property(x => x.Answer).HasMaxLength(12000);
+            e.Property(x => x.TaskId).HasMaxLength(40);
+            e.HasIndex(x => new { x.OwnerId, x.Key }).IsUnique();
+            e.HasIndex(x => new { x.JobId, x.OwnerId, x.TaskId, x.CreatedAt, x.Id });
+            e.HasOne<StudyJob>().WithMany().HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<ActivityEvent>(e =>
+        {
+            e.Property(x => x.EventKey).HasMaxLength(200);
+            e.Property(x => x.Kind).HasMaxLength(30);
+            e.HasIndex(x => x.EventKey).IsUnique();
+            e.HasIndex(x => new { x.DispatchedAt, x.CreatedAt, x.Id });
+        });
+        model.Entity<ActivityItem>(e =>
+        {
+            e.Property(x => x.GroupKey).HasMaxLength(100);
+            e.Property(x => x.Kind).HasMaxLength(30);
+            e.HasIndex(x => new { x.OwnerId, x.GroupKey }).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.ReadAt, x.UpdatedAt, x.Id });
+            e.HasIndex(x => new { x.OwnerId, x.UpdatedAt, x.Id });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<ActivityPreference>(e =>
+        {
+            e.HasKey(x => x.OwnerId);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<ThreadSubscription>(e =>
+        {
+            e.HasKey(x => new { x.ThreadId, x.OwnerId });
+            e.HasOne<CommunityPost>().WithMany().HasForeignKey(x => x.ThreadId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<SavedItem>(e =>
+        {
+            e.Property(x => x.Kind).HasMaxLength(20);
+            e.HasIndex(x => new { x.OwnerId, x.Kind, x.TargetId }).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.CreatedAt, x.Id });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<CommunityBlock>(e =>
+        {
+            e.HasIndex(x => new { x.OwnerId, x.BlockedUserId, x.IsAnonymous }).IsUnique();
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.BlockedUserId).OnDelete(DeleteBehavior.Cascade);
+        });
+        model.Entity<CommunityReport>(e =>
+        {
+            e.Property(x => x.Reason).HasMaxLength(1000);
+            e.Property(x => x.State).HasMaxLength(20);
+            e.HasIndex(x => new { x.PostId, x.ReporterId }).IsUnique();
+            e.HasIndex(x => new { x.State, x.CreatedAt });
+            e.HasOne<CommunityPost>().WithMany().HasForeignKey(x => x.PostId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.ReporterId).OnDelete(DeleteBehavior.Cascade);
+        });
         model.Entity<CommunityPost>(e =>
         {
             e.Property(x => x.Title).HasMaxLength(180);
             e.Property(x => x.Body).HasMaxLength(8000);
             e.Property(x => x.Kind).HasMaxLength(20);
             e.Property(x => x.RequestKey).HasMaxLength(100);
+            e.Property(x => x.RequestHash).HasMaxLength(64);
+            e.HasIndex(x => new { x.AuthorId, x.CreatedAt, x.Id });
             e.HasIndex(x => new { x.AuthorId, x.RequestKey }).IsUnique();
             e.HasIndex(x => new { x.ParentId, x.CreatedAt });
             e.HasIndex(x => new { x.CourseId, x.CreatedAt });

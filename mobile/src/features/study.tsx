@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Pressable, ScrollView, View } from 'react-native';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   Button,
   Chip,
@@ -13,6 +13,7 @@ import {
   Notice,
   Page,
   Row,
+  SearchField,
   Section,
   T,
   layout,
@@ -20,82 +21,25 @@ import {
 import { colors as c } from '../theme';
 import { api, newKey } from '../api/runtime';
 import { errorText } from '../api/client';
-import { jobPoller } from '../api/polling';
-import { pending, type Attempt, type Citation, type Job, type StudyRequest } from '../api/types';
+import { useJob } from '../study/use-job';
+import {
+  pending,
+  type Attempt,
+  type Job,
+  type StudyRequest,
+  type CourseDetail,
+} from '../api/types';
+import { sourceScope } from './course-resources';
 import { useResource } from './hooks';
-import { ResourceState } from './courses';
+import { ResourceState } from './resource-state';
 import PdfCanvas from '../pdf/PdfCanvas';
 import { base64, physicalPage } from '../pdf/bytes';
 import { useSession } from '../auth/session';
 import { drafts } from '../study/draft-runtime';
 import type { QuizDraft } from '../study/drafts';
-import { StudyArticle, StudyProgress, HistoryEntry, sourceName } from '../study/presentation';
-export function Citations({ citations }: { citations: Citation[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const pages = [
-    ...new Map(citations.map((source) => [source.versionId + ':' + source.page, source])).values(),
-  ];
-  if (!pages.length) return null;
-  return (
-    <View style={{ gap: 6 }}>
-      {pages.map((source) => (
-        <Pressable
-          key={source.versionId + source.page}
-          accessibilityRole="button"
-          accessibilityLabel={`Open ${sourceName(source.fileName)}, PDF page ${source.page}`}
-          onPress={() =>
-            router.push({
-              pathname: '/reader',
-              params: {
-                materialId: source.materialId,
-                versionId: source.versionId,
-                page: String(source.page),
-              },
-            })
-          }
-          style={({ pressed }) => ({
-            minHeight: 44,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 9,
-            opacity: pressed ? 0.65 : 1,
-          })}
-        >
-          <Icon name="FileText" color={c.blue} size={17} />
-          <T variant="small" style={{ color: c.blue, flex: 1 }} numberOfLines={2}>
-            {sourceName(source.fileName)} · PDF page {source.page}
-          </T>
-          <Icon name="ArrowRight" color={c.blue} size={16} />
-        </Pressable>
-      ))}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        aria-expanded={expanded}
-        onPress={() => setExpanded((value) => !value)}
-        style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' }}
-      >
-        <T variant="small" style={{ color: c.muted }}>
-          {expanded ? 'Hide supporting excerpts' : 'Show supporting excerpts'}
-        </T>
-      </Pressable>
-      {expanded &&
-        citations.map((source, index) => (
-          <View
-            key={source.chunkId + index}
-            style={{ backgroundColor: c.canvas, padding: 14, borderRadius: 12, gap: 6 }}
-          >
-            <T variant="small" selectable>
-              “{source.quote}”
-            </T>
-            <T variant="small" style={{ color: c.blue }}>
-              PDF page {source.page}
-            </T>
-          </View>
-        ))}
-    </View>
-  );
-}
+import { PracticePlayer } from './practice';
+import { Citations } from '../study/citations';
+import { StudyArticle, StudyProgress, HistoryEntry, openStudy } from '../study/presentation';
 export function StudySetupScreen() {
   const params = useLocalSearchParams<{
     courseId: string;
@@ -112,6 +56,13 @@ export function StudySetupScreen() {
   const [language, setLanguage] = useState<'en' | 'fr'>(params.language === 'fr' ? 'fr' : 'en');
   const [count, setCount] = useState<5 | 10>(5);
   const [chapter, setChapter] = useState(false);
+  const scope = useResource<CourseDetail>(params.courseId ? `/courses/${params.courseId}` : null);
+  const included = scope.data
+    ? sourceScope(scope.data, params.materialId, chapter ? params.chapterId : undefined)
+    : [];
+  const sectionTitle = scope.data?.structure.chapters?.find(
+    (item) => item.id === params.chapterId,
+  )?.title;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const key = useRef(newKey());
@@ -158,7 +109,15 @@ export function StudySetupScreen() {
                 : 'Let’s practise'
           }
           busy={busy}
-          disabled={kind === 'answer' && !question.trim()}
+          disabled={
+            scope.loading ||
+            !!scope.error ||
+            (kind === 'answer'
+              ? !question.trim()
+              : !included.some(
+                  (material) => material.contentType === 'application/pdf' && material.indexed,
+                ))
+          }
           onPress={() => void start()}
           icon="ArrowRight"
         />
@@ -169,7 +128,7 @@ export function StudySetupScreen() {
           kind === 'answer'
             ? 'Ask your companion'
             : kind === 'summary'
-              ? 'The key ideas'
+              ? 'Summary'
               : 'A little practice'
         }
       />
@@ -203,9 +162,25 @@ export function StudySetupScreen() {
         <>
           <Section title="Cover what?" />
           <Chip label="This document" selected={!chapter} onPress={() => setChapter(false)} />
-          <Chip label="The whole chapter" selected={chapter} onPress={() => setChapter(true)} />
+          <Chip
+            label={sectionTitle || 'This section'}
+            selected={chapter}
+            onPress={() => setChapter(true)}
+          />
         </>
       )}
+      <Section title="Sources for this session" />
+      <ResourceState {...scope} retry={scope.reload} />
+      {included.map((material) => (
+        <T key={material.id} variant="small">
+          {material.title} ·{' '}
+          {material.contentType !== 'application/pdf'
+            ? 'Not used: only PDFs are supported'
+            : material.indexed
+              ? 'Indexed PDF'
+              : 'PDF indexing pending'}
+        </T>
+      ))}
       {kind === 'quiz' && (
         <>
           <Section title="How many questions?" />
@@ -227,35 +202,6 @@ export function StudySetupScreen() {
       {!!error && <Notice tone="error">{error}</Notice>}
     </Page>
   );
-}
-function useJob(id: string) {
-  const [job, setJob] = useState<Job | null>(null);
-  const [error, setError] = useState('');
-  const [revision, setRevision] = useState(0);
-  useFocusEffect(
-    useCallback(() => {
-      // Revision explicitly restarts the external polling subscription after a manual retry.
-      void revision;
-      const poller = jobPoller(
-        (signal) => api.request<Job>(`/study-jobs/${id}`, { signal }),
-        (value) => {
-          setJob(value);
-          setError('');
-        },
-        (e) => setError(errorText(e)),
-      );
-      if (AppState.currentState !== 'background') poller.start();
-      const subscription = AppState.addEventListener('change', (state) => {
-        if (state === 'active') poller.start();
-        else poller.stop();
-      });
-      return () => {
-        poller.stop();
-        subscription.remove();
-      };
-    }, [id, revision]),
-  );
-  return { job: job?.id === id ? job : null, error, reload: () => setRevision((x) => x + 1) };
 }
 function QuizSession({
   id,
@@ -537,7 +483,11 @@ function QuizPlayer(props: {
 }
 
 export function JobScreen() {
-  const { id, retryAttemptId } = useLocalSearchParams<{ id: string; retryAttemptId?: string }>();
+  const { id, retryAttemptId, practiceTaskId } = useLocalSearchParams<{
+    id: string;
+    retryAttemptId?: string;
+    practiceTaskId?: string;
+  }>();
   const { job, error, reload } = useJob(id);
   const [submitError, setSubmitError] = useState('');
   const retry = useResource<Attempt>(retryAttemptId ? `/quiz-attempts/${retryAttemptId}` : null);
@@ -545,11 +495,15 @@ export function JobScreen() {
     <Page>
       <Header
         title={
-          job?.kind === 'quiz'
-            ? 'Practice time'
-            : job?.kind === 'summary'
-              ? 'Your summary'
-              : 'Let’s understand it'
+          job?.kind === 'tutor'
+            ? 'Course tutor'
+            : job?.kind === 'practice'
+              ? 'Written & coding practice'
+              : job?.kind === 'quiz'
+                ? 'Practice time'
+                : job?.kind === 'summary'
+                  ? 'Your summary'
+                  : 'Let’s understand it'
         }
       />
       {!!error && (
@@ -561,6 +515,9 @@ export function JobScreen() {
       {!job && !error && <ActivityIndicator color={c.blue} />}
       {job && (
         <>
+          {job.kind === 'tutor' && job.request.conversationId && (
+            <Button label="Open saved conversation" onPress={() => openStudy(job)} />
+          )}
           {job.stale && (
             <Notice>
               This session uses an earlier version of the source materials. Its links open the
@@ -594,10 +551,18 @@ export function JobScreen() {
             />
           ) : (
             <>
-              {job.kind !== 'quiz' && (
+              {job.kind !== 'quiz' && job.kind !== 'practice' && (
                 <StudyArticle
                   job={job}
                   renderCitations={(citations) => <Citations citations={citations} />}
+                />
+              )}
+              {job.kind === 'practice' && job.result?.practice && (
+                <PracticePlayer
+                  key={`${id}:${practiceTaskId || ''}`}
+                  id={id}
+                  artifact={job.result.practice}
+                  initialTaskId={practiceTaskId}
                 />
               )}
               {job.kind === 'quiz' && (
@@ -626,8 +591,9 @@ export function HistoryScreen() {
   const { courseId } = useLocalSearchParams<{ courseId?: string }>();
   const [tab, setTab] = useState<'sessions' | 'attempts'>('sessions');
   const [page, setPage] = useState(1);
-  const sessions = useResource<{ data: Job[] }>(
-    `/study-jobs${courseId ? `?courseId=${courseId}` : ''}`,
+  const [search, setSearch] = useState('');
+  const sessions = useResource<{ data: Job[]; total: number }>(
+    `/study-jobs?page=${page}&limit=20&q=${encodeURIComponent(search.trim())}${courseId ? `&courseId=${courseId}` : ''}`,
   );
   const attempts = useResource<{ data: Attempt[] }>(
     `/quiz-attempts?page=${page}${courseId ? `&courseId=${courseId}` : ''}`,
@@ -645,22 +611,34 @@ export function HistoryScreen() {
         <Chip
           label="Study sessions"
           selected={tab === 'sessions'}
-          onPress={() => setTab('sessions')}
+          onPress={() => {
+            setTab('sessions');
+            setPage(1);
+          }}
         />
         <Chip
           label="Quiz results"
           selected={tab === 'attempts'}
-          onPress={() => setTab('attempts')}
+          onPress={() => {
+            setTab('attempts');
+            setPage(1);
+          }}
         />
       </View>
+      {tab === 'sessions' && (
+        <SearchField
+          value={search}
+          onChangeText={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+          placeholder="Find a course or saved session…"
+        />
+      )}
       <ResourceState {...resource} retry={resource.reload} />
       {tab === 'sessions'
         ? sessions.data?.data.map((job) => (
-            <HistoryEntry
-              key={job.id}
-              job={job}
-              onPress={() => router.push({ pathname: '/job', params: { id: job.id } })}
-            />
+            <HistoryEntry key={job.id} job={job} onPress={() => openStudy(job)} />
           ))
         : attempts.data?.data.map((attempt) => (
             <Row
@@ -677,7 +655,7 @@ export function HistoryScreen() {
           body="Saved study sessions and completed quizzes will appear here."
         />
       )}
-      {tab === 'attempts' && (
+      {(tab === 'attempts' || !!sessions.data?.total) && (
         <View style={layout.inline}>
           <Button
             label="Previous"
@@ -689,7 +667,11 @@ export function HistoryScreen() {
           <Button
             label="Next"
             kind="quiet"
-            disabled={(attempts.data?.data.length || 0) < 20}
+            disabled={
+              tab === 'attempts'
+                ? (attempts.data?.data.length || 0) < 20
+                : page * 20 >= (sessions.data?.total || 0)
+            }
             onPress={() => setPage((p) => p + 1)}
           />
         </View>
@@ -698,10 +680,11 @@ export function HistoryScreen() {
   );
 }
 export function AttemptScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, questionId } = useLocalSearchParams<{ id: string; questionId?: string }>();
   const resource = useResource<Attempt>(`/quiz-attempts/${id}`);
   const attempt = resource.data;
   const [missedOnly, setMissedOnly] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   return (
     <Page>
       <Header title="Your little wins" />
@@ -741,15 +724,22 @@ export function AttemptScreen() {
             <Chip
               label="All questions"
               selected={!missedOnly}
-              onPress={() => setMissedOnly(false)}
+              onPress={() => {
+                setShowAll(true);
+                setMissedOnly(false);
+              }}
             />
             <Chip
               label="What to revisit"
               selected={missedOnly}
-              onPress={() => setMissedOnly(true)}
+              onPress={() => {
+                setShowAll(true);
+                setMissedOnly(true);
+              }}
             />
           </View>
           {attempt.corrections
+            .filter((q) => !questionId || showAll || q.questionId === questionId)
             .filter((q) => !missedOnly || q.selectedOptionId !== q.correctOptionId)
             .map((q, i) => (
               <View

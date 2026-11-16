@@ -4,18 +4,58 @@ import { Button, Field, Header, Hero, Notice, Page, Row, Section, T } from '../u
 import { useSession } from '../auth/session';
 import { api } from '../api/runtime';
 import { errorText } from '../api/client';
+import { ActivityBell } from './activity';
 export function ProfileScreen() {
   const { profile, logout } = useSession();
   const [error, setError] = useState('');
   return (
     <Page>
-      <Header title="Your corner" back={false} />
+      <Header title="Your corner" back={false} right={<ActivityBell />} />
       <Hero title={profile?.displayName || 'Your profile'} subtitle={profile?.university} />
       <T>{profile?.email}</T>
       <Section title="Make progress your way" />
       <Row
+        title="Your learning"
+        detail="Your activity, revision queue and study reminders"
+        icon="GraduationCap"
+        onPress={() => router.push('/progress')}
+      />
+      <Row
+        title="Activity"
+        detail="Replies, followed discussions and finished study sessions"
+        icon="Bell"
+        onPress={() => router.push('/activity')}
+      />
+      <Row
+        title="My discussions"
+        detail="Your threads and replies, including anonymous posts"
+        icon="MessageCircle"
+        onPress={() => router.push('/my-discussions')}
+      />
+      <Row
+        title="Saved items"
+        detail="Bookmarked discussions and resources"
+        icon="Bookmark"
+        onPress={() => router.push('/saved-items')}
+      />
+      {profile?.roles.includes('Admin') && (
+        <Row
+          title="Community reports"
+          detail="Review reported contributions"
+          icon="Flag"
+          onPress={() => router.push('/reports')}
+        />
+      )}
+
+      <Row
+        title="Course conversations"
+        detail="Saved tutor chats and practice feedback"
+        icon="Sparkle"
+        onPress={() => router.push('/tutor')}
+      />
+      <Row
         title="Study history"
-        detail="Saved explanations, summaries and quizzes"
+        detail="Saved explanations, summaries, quizzes and practice"
         icon="History"
         onPress={() => router.push('/history')}
       />
@@ -77,6 +117,24 @@ export function SettingsScreen() {
       <Field label="Your name" value={name} onChangeText={setName} maxLength={80} />
       <Button label="Save name" onPress={() => void save()} disabled={!name.trim()} busy={busy} />
       {!!notice && <Notice tone="success">{notice}</Notice>}
+      <Row
+        title="Hidden participants"
+        detail="Manage hidden profiles and anonymous contributions"
+        icon="EyeOff"
+        onPress={() => router.push('/blocked')}
+      />
+      <Row
+        title="Activity preferences"
+        detail="Choose the updates you receive"
+        icon="Bell"
+        onPress={() => router.push('/activity-settings')}
+      />
+      <Row
+        title="Phone notifications"
+        detail="Device permission and private push previews"
+        icon="Bell"
+        onPress={() => router.push('/phone-notifications')}
+      />
       <Section title="Change password" />
       <Field
         label="Current password"

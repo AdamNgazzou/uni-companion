@@ -63,6 +63,59 @@ public sealed class BridgeTests
         finally { Directory.Delete(root, true); }
     }
 
+    [Theory]
+    [InlineData("stdout", 12000001, true)]
+    [InlineData("stderr", 64001, true)]
+    [InlineData("stderr", 64001, false)]
+    public async Task OversizedOutputFailsBeforeDeadlineAndReleasesProcessLocks(string stream, int length, bool consumesInput)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "companion-output-" + Guid.NewGuid());
+        Directory.CreateDirectory(root);
+        try
+        {
+            var script = Path.Combine(root, "fake_bridge.py");
+            var readInput = consumesInput ? "sys.stdin.readline()\n" : "";
+            await File.WriteAllTextAsync(script, $"import sys, time\n{readInput}sys.{stream}.write('x' * {length})\nsys.{stream}.flush()\ntime.sleep(30)\n");
+            using var bridge = Create(root, Environment.GetEnvironmentVariable("Ai__Python")!, script);
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var prompt = consumesInput ? "fixture" : new string('é', 48000);
+            var failure = await Assert.ThrowsAsync<GenerationFailure>(() => bridge.GenerateAsync(prompt, deadline.Token));
+            Assert.Equal("provider_output_too_large", failure.Code); Assert.False(failure.Retryable);
+            await File.WriteAllTextAsync(script, "import sys\nsys.stdin.readline()\nprint('{\"ok\":true,\"text\":\"recovered\"}')\n");
+            Assert.Equal("recovered", await bridge.GenerateAsync("fixture", deadline.Token));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public async Task CallerCancellationReapsChildAndAllowsTheNextRequest()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "companion-cancel-" + Guid.NewGuid());
+        Directory.CreateDirectory(root);
+        try
+        {
+            var script = Path.Combine(root, "fake_bridge.py"); var ready = Path.Combine(root, "ready");
+            await File.WriteAllTextAsync(script, "import os, sys, time\nsys.stdin.readline()\nready=" + JsonSerializer.Serialize(ready) + "\nwith open(ready + '.tmp', 'w') as signal:\n    signal.write(str(os.getpid()))\nos.replace(ready + '.tmp', ready)\ntime.sleep(30)\n");
+            using var bridge = Create(root, Environment.GetEnvironmentVariable("Ai__Python")!, script);
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var request = bridge.GenerateAsync("fixture", cancellation.Token);
+            while (!File.Exists(ready)) await Task.Delay(10, cancellation.Token);
+            var pid = int.Parse(await File.ReadAllTextAsync(ready), System.Globalization.CultureInfo.InvariantCulture);
+            await cancellation.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => request);
+            try
+            {
+                using var child = System.Diagnostics.Process.GetProcessById(pid);
+                Assert.True(child.HasExited);
+            }
+            catch (ArgumentException) { /* The OS has already reaped the child. */ }
+            await File.WriteAllTextAsync(script, "import sys\nsys.stdin.readline()\nprint('{\"ok\":true,\"text\":\"recovered\"}')\n");
+            using var nextDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            Assert.Equal("recovered", await bridge.GenerateAsync("fixture", nextDeadline.Token));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
     private static PythonAiBridge Create(string root, string executable, string script) => new(new ConfigurationBuilder()
         .AddInMemoryCollection(new Dictionary<string, string?> { ["Ai:Python"] = executable, ["Ai:Bridge"] = script, ["Storage:Root"] = root }).Build());
 }

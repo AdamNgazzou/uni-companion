@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -258,11 +259,15 @@ export function Page({
   footer,
   scroll = true,
   padded = true,
+  onRefresh,
+  refreshing = false,
 }: {
   children: React.ReactNode;
   footer?: React.ReactNode;
   scroll?: boolean;
   padded?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   return (
     <SafeAreaView style={s.page} edges={['top', 'left', 'right', 'bottom']}>
@@ -272,6 +277,16 @@ export function Page({
       >
         {scroll ? (
           <ScrollView
+            refreshControl={
+              onRefresh && Platform.OS !== 'web' ? (
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={c.blue}
+                  colors={[c.blue]}
+                />
+              ) : undefined
+            }
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[s.content, !padded && { padding: 0 }]}
             showsVerticalScrollIndicator={false}

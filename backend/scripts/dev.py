@@ -36,7 +36,7 @@ def configuration():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', choices=['setup', 'up', 'down', 'migrate', 'serve', 'import', 'admin', 'test', 'index', 'evaluate', 'evaluate-study', 'worker', 'seed-community'])
+    parser.add_argument('command', choices=['setup', 'up', 'down', 'migrate', 'serve', 'import', 'admin', 'test', 'index', 'evaluate', 'evaluate-study', 'evaluate-practice', 'worker', 'seed-community'])
     parser.add_argument('--email')
     parser.add_argument('--cases', help='Optional comma-separated gold IDs for local study evaluation.')
     args = parser.parse_args()
@@ -60,6 +60,7 @@ def main():
             cmd = [dotnet, 'test', 'UniCompanion.sln', '--no-restore', '--disable-build-servers', '-m:1']
         else:
             cmd = [dotnet, 'run', '--disable-build-servers', '--no-launch-profile', '--project', 'src/UniCompanion.Worker' if args.command == 'worker' else 'src/UniCompanion.Api', '--']
+            if args.command == 'evaluate-practice': cmd += ['--evaluate-practice', str(ROOT / 'tests/practice-evaluation.json'), str(ROOT / ('.local/evidence/next/practice-evaluation-focused.json' if args.cases else '.local/evidence/next/practice-evaluation.json'))] + ([args.cases] if args.cases else [])
             if args.command == 'evaluate-study': cmd += ['--evaluate-study', str(ROOT / 'tests/retrieval-evaluation.json'), str(ROOT / ('.local/study-evaluation-focused.json' if args.cases else '.local/study-evaluation.json'))] + ([args.cases] if args.cases else [])
             if args.command == 'evaluate': cmd += ['--evaluate', str(ROOT / 'tests/retrieval-evaluation.json')]
             if args.command == 'seed-community': cmd += ['--seed-community']

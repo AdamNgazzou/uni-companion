@@ -12,6 +12,7 @@ using UniCompanion.Core.Study;
 using UniCompanion.Infrastructure.Persistence;
 using UniCompanion.Infrastructure.Storage;
 using UniCompanion.Infrastructure.Study;
+using UniCompanion.Infrastructure.Activity;
 
 namespace UniCompanion.Infrastructure;
 
@@ -73,6 +74,17 @@ public static class DependencyInjection
         services.AddScoped<CourseSearch>();
         services.AddScoped<StudyAccess>();
         services.AddScoped<StudyJobs>();
+        services.AddScoped<UniCompanion.Infrastructure.Practice.PracticeComposer>();
+        services.AddScoped<UniCompanion.Infrastructure.Practice.PracticeEvaluator>();
+        services.AddScoped<ActivityEvents>();
+        services.AddScoped<UniCompanion.Infrastructure.Tutor.TutorConversations>();
+        services.AddScoped<ActivityDispatcher>();
+        services.AddSingleton<UniCompanion.Infrastructure.Push.PushConfiguration>();
+        services.AddScoped<UniCompanion.Infrastructure.Push.PushDevices>();
+        services.AddScoped<UniCompanion.Infrastructure.Push.PushProcessor>();
+        services.AddHttpClient<UniCompanion.Core.Push.IPushGateway, UniCompanion.Infrastructure.Push.ExpoPushGateway>(client => client.Timeout = TimeSpan.FromSeconds(20));
+        services.AddScoped<UniCompanion.Infrastructure.Learning.LearningProgress>();
+        services.AddScoped<UniCompanion.Infrastructure.Learning.RevisionReminders>();
         services.AddScoped<StudyComposer>();
         services.AddScoped<StudyProcessor>();
         services.AddSingleton(new PrivateFileStore(Path.Combine(dataRoot, "blobs")));

@@ -77,6 +77,7 @@ public sealed class PythonAiBridge(IConfiguration configuration) : IQueryEmbeddi
         using var process = new Process();
         var started = false;
         FileStream? hostLease = null;
+        Task[] processTasks = [];
         try
         {
             hostLease = await AcquireHostLeaseAsync(deadline.Token);
@@ -95,9 +96,17 @@ public sealed class PythonAiBridge(IConfiguration configuration) : IQueryEmbeddi
             if (!started) throw new AiUnavailableException();
             var output = ReadBoundedAsync(process.StandardOutput, 12_000_000, deadline.Token);
             var diagnostics = ReadBoundedAsync(process.StandardError, 64_000, deadline.Token);
-            await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(request).AsMemory(), deadline.Token);
-            process.StandardInput.Close();
-            await Task.WhenAll(process.WaitForExitAsync(deadline.Token), output, diagnostics);
+            processTasks = [process.WaitForExitAsync(deadline.Token), output, diagnostics,
+                WriteInputAsync(process.StandardInput, request, deadline.Token)];
+            // WhenAll waits for every task even after a reader faults. Observe each
+            // completion so an output-limit failure kills a still-running child now.
+            var pending = processTasks.ToList();
+            while (pending.Count > 0)
+            {
+                var completed = await Task.WhenAny(pending);
+                await completed;
+                pending.Remove(completed);
+            }
             if (process.ExitCode != 0) throw new AiUnavailableException();
             using var json = JsonDocument.Parse(await output);
             var root = json.RootElement;
@@ -114,11 +123,33 @@ public sealed class PythonAiBridge(IConfiguration configuration) : IQueryEmbeddi
         {
             try
             {
-                if (started && !process.HasExited) process.Kill(entireProcessTree: true);
+                await deadline.CancelAsync();
+                if (started)
+                {
+                    if (!process.HasExited) process.Kill(entireProcessTree: true);
+                    using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await process.WaitForExitAsync(cleanup.Token);
+                }
             }
             catch (InvalidOperationException) { /* Process exited between inspection and kill. */ }
-            finally { hostLease?.Dispose(); gate.Release(); }
+            catch (OperationCanceledException) { /* Cleanup is bounded; preserve the original result. */ }
+            finally
+            {
+                // Observe cancelled/faulted pipe tasks without replacing the primary
+                // provider failure. Cancellation plus process termination closes pipes.
+                try { await Task.WhenAll(processTasks).WaitAsync(TimeSpan.FromSeconds(5)); }
+                catch (Exception) { /* The original failure is already being propagated. */ }
+                hostLease?.Dispose(); gate.Release();
+            }
         }
+    }
+
+    private static async Task WriteInputAsync(StreamWriter input, object request, CancellationToken cancellationToken)
+    {
+        // Supervise input alongside both readers: a child that stops reading must
+        // not hide an output-limit failure behind a blocked pipe write.
+        await input.WriteLineAsync(JsonSerializer.Serialize(request).AsMemory(), cancellationToken);
+        input.Close();
     }
 
     private async Task<FileStream> AcquireHostLeaseAsync(CancellationToken cancellationToken)

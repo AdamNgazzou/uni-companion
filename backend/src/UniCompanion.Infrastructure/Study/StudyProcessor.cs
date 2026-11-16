@@ -4,19 +4,27 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using UniCompanion.Core.Study;
 using UniCompanion.Infrastructure.Persistence;
+using UniCompanion.Infrastructure.Activity;
 
 namespace UniCompanion.Infrastructure.Study;
 
 public sealed class StudyProcessor(AppDbContext db, StudyAccess access, StudyComposer composer, IServiceScopeFactory scopes,
-    TimeProvider clock, ILogger<StudyProcessor> logger)
+    TimeProvider clock, ILogger<StudyProcessor> logger, ActivityEvents activity)
 {
     public async Task<bool> ProcessNextAsync(CancellationToken stoppingToken)
     {
         var now = clock.GetUtcNow();
-        await db.StudyJobs.Where(j => (j.State == JobStates.Queued || j.State == JobStates.Retry || j.State == JobStates.Running) &&
-            ((j.StartedAt != null && j.StartedAt <= now.AddMinutes(-10)) ||
-             (j.Attempts >= 3 && (j.State != JobStates.Running || j.LeaseUntil <= now))))
-            .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, JobStates.Failed).SetProperty(j => j.ErrorCode, "job_budget_exceeded").SetProperty(j => j.UpdatedAt, now), stoppingToken);
+        await using (var expiration = await db.Database.BeginTransactionAsync(stoppingToken))
+        {
+            var expired = await db.StudyJobs.FromSqlInterpolated($"""
+                UPDATE "StudyJobs" SET "State" = 'failed', "ErrorCode" = 'job_budget_exceeded', "UpdatedAt" = {now}
+                WHERE "State" IN ('queued', 'retry_wait', 'running') AND
+                  (("StartedAt" IS NOT NULL AND "StartedAt" <= {now.AddMinutes(-10)}) OR
+                   ("Attempts" >= 3 AND ("State" <> 'running' OR "LeaseUntil" <= {now}))) RETURNING *
+                """).AsNoTracking().ToArrayAsync(stoppingToken);
+            foreach (var expiredJob in expired) await activity.StudyAsync(expiredJob.Id, stoppingToken);
+            await expiration.CommitAsync(stoppingToken);
+        }
         var owner = Guid.NewGuid();
         var until = now.AddSeconds(120);
         var claimed = await db.StudyJobs.FromSqlInterpolated($"""
@@ -68,40 +76,41 @@ public sealed class StudyProcessor(AppDbContext db, StudyAccess access, StudyCom
             await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM \"AspNetUserRoles\" WHERE \"UserId\" = {job.OwnerId} FOR SHARE", cancellation.Token);
             if (!await access.CanReadAsync(job.CourseId, job.OwnerId, cancellation.Token)) throw new StudyRequestException(403, "permission_changed");
             var json = JsonSerializer.Serialize(result, StudyJobs.Json);
-            await Owned(job).Where(j => j.LeaseUntil > clock.GetUtcNow()).ExecuteUpdateAsync(s => s
+            var published = await Owned(job).Where(j => j.LeaseUntil > clock.GetUtcNow()).ExecuteUpdateAsync(s => s
                 .SetProperty(j => j.State, JobStates.Succeeded).SetProperty(j => j.Stage, "Ready to study")
                 .SetProperty(j => j.ResultJson, json).SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null)
                 .SetProperty(j => j.ErrorCode, (string?)null).SetProperty(j => j.UpdatedAt, clock.GetUtcNow()), cancellation.Token);
+            if (published == 1) await activity.StudyAsync(job.Id, cancellation.Token);
             await transaction.CommitAsync(cancellation.Token);
         }
         catch (OperationCanceledException)
         {
             var shutdown = stoppingToken.IsCancellationRequested;
-            await Owned(job).ExecuteUpdateAsync(s => s.SetProperty(j => j.State, shutdown ? JobStates.Retry : JobStates.Failed)
+            await PersistStateAsync(job, () => Owned(job).ExecuteUpdateAsync(s => s.SetProperty(j => j.State, shutdown ? JobStates.Retry : JobStates.Failed)
                 .SetProperty(j => j.ErrorCode, shutdown ? "worker_restarting" : "job_timeout_or_lease_lost")
                 .SetProperty(j => j.NextAttemptAt, clock.GetUtcNow()).SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null)
                 .SetProperty(j => j.Attempts, j => shutdown ? j.Attempts - 1 : j.Attempts)
-                .SetProperty(j => j.UpdatedAt, clock.GetUtcNow()), CancellationToken.None);
+                .SetProperty(j => j.UpdatedAt, clock.GetUtcNow()), CancellationToken.None), !shutdown);
         }
         catch (GenerationFailure error)
         {
             var retry = error.Retryable && job.Attempts < 3 && job.ProviderCalls < 12;
             var delay = error.RetryAfter ?? (5 * (1 << job.Attempts) + Random.Shared.Next(4));
-            await Owned(job).ExecuteUpdateAsync(s => s.SetProperty(j => j.State, retry ? JobStates.Retry : JobStates.Failed)
+            await PersistStateAsync(job, () => Owned(job).ExecuteUpdateAsync(s => s.SetProperty(j => j.State, retry ? JobStates.Retry : JobStates.Failed)
                 .SetProperty(j => j.ErrorCode, error.Code).SetProperty(j => j.Stage, retry ? "We’ll try again shortly" : "Could not finish this study session")
                 .SetProperty(j => j.NextAttemptAt, clock.GetUtcNow().AddSeconds(Math.Clamp(delay, 1, 3600)))
-                .SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null).SetProperty(j => j.UpdatedAt, clock.GetUtcNow()), CancellationToken.None);
+                .SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null).SetProperty(j => j.UpdatedAt, clock.GetUtcNow()), CancellationToken.None), !retry);
         }
         catch (StudyRequestException error)
         {
-            await Owned(job).ExecuteUpdateAsync(s => s.SetProperty(j => j.State, JobStates.Failed).SetProperty(j => j.ErrorCode, error.Code)
-                .SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null).SetProperty(j => j.UpdatedAt, clock.GetUtcNow()), CancellationToken.None);
+            await PersistStateAsync(job, () => Owned(job).ExecuteUpdateAsync(s => s.SetProperty(j => j.State, JobStates.Failed).SetProperty(j => j.ErrorCode, error.Code)
+                .SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null).SetProperty(j => j.UpdatedAt, clock.GetUtcNow()), CancellationToken.None), true);
         }
         catch (Exception error)
         {
             logger.LogError("Study job {JobId} failed ({ErrorType})", job.Id, error.GetType().Name);
-            await Owned(job).ExecuteUpdateAsync(s => s.SetProperty(j => j.State, JobStates.Failed).SetProperty(j => j.ErrorCode, "processing_failed")
-                .SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null).SetProperty(j => j.UpdatedAt, clock.GetUtcNow()), CancellationToken.None);
+            await PersistStateAsync(job, () => Owned(job).ExecuteUpdateAsync(s => s.SetProperty(j => j.State, JobStates.Failed).SetProperty(j => j.ErrorCode, "processing_failed")
+                .SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null).SetProperty(j => j.UpdatedAt, clock.GetUtcNow()), CancellationToken.None), true);
         }
         finally
         {
@@ -109,6 +118,14 @@ public sealed class StudyProcessor(AppDbContext db, StudyAccess access, StudyCom
             try { await heartbeat; } catch (OperationCanceledException) { }
         }
         return true;
+    }
+
+    private async Task PersistStateAsync(StudyJob job, Func<Task<int>> update, bool terminal)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(CancellationToken.None);
+        var changed = await update();
+        if (terminal && changed == 1) await activity.StudyAsync(job.Id, CancellationToken.None);
+        await transaction.CommitAsync(CancellationToken.None);
     }
 
     private IQueryable<StudyJob> Owned(StudyJob job) => db.StudyJobs.Where(j => j.Id == job.Id && j.State == JobStates.Running && j.LeaseOwner == job.LeaseOwner && j.Fence == job.Fence && j.LeaseUntil > clock.GetUtcNow());

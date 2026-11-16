@@ -1,0 +1,42 @@
+{
+  "version": 4,
+  "cases": [
+    {
+      "id": "ml-en",
+      "materialId": "b23141e5-778a-4e1c-a2c8-e7a1b65ca6f3",
+      "language": "en",
+      "topic": "Explain supervised classification versus regression. Implement a majority-label baseline over tiny synthetic labels; break ties alphabetically and return null for empty labels."
+    },
+    {
+      "id": "ml-fr",
+      "materialId": "b23141e5-778a-4e1c-a2c8-e7a1b65ca6f3",
+      "language": "fr",
+      "topic": "Expliquer classification supervisée et régression. Implémenter la classe majoritaire de petites étiquettes synthétiques, départager les ex aequo par ordre alphabétique, retourner null si vide."
+    },
+    {
+      "id": "mapreduce-en",
+      "materialId": "4e673454-65ac-4e16-b873-c7e09d5365e5",
+      "language": "en",
+      "topic": "Simulate map and reduce word counting with generated input, without Hadoop Focus only on local mapping, grouping and reducing logic. No Hadoop infrastructure, fault-tolerance or deployment comparisons."
+    },
+    {
+      "id": "mapreduce-fr",
+      "materialId": "4e673454-65ac-4e16-b873-c7e09d5365e5",
+      "language": "fr",
+      "topic": "Simuler le comptage de mots map/reduce avec du texte synthétique, sans Hadoop Focus only on local mapping, grouping and reducing logic. No Hadoop infrastructure, fault-tolerance or deployment comparisons."
+    },
+    {
+      "id": "security-en",
+      "materialId": "603b4c24-c100-4d0a-8000-3f1b6dafdb17",
+      "language": "en",
+      "topic": "Explain confidentiality, integrity and availability in new scenarios. Code a count of tiny synthetic incident records already labelled with a CIA property; include unknown labels separately, without inferring a property from free text."
+    },
+    {
+      "id": "security-fr",
+      "materialId": "603b4c24-c100-4d0a-8000-3f1b6dafdb17",
+      "language": "fr",
+      "topic": "Expliquer confidentialité, intégrité et disponibilité dans de nouveaux scénarios. Compter de petits incidents synthétiques déjà étiquetés par propriété CIA, et compter les étiquettes inconnues séparément, sans inférence depuis le texte libre."
+    }
+  ],
+  "scopeDecision": "Initial arithmetic/imputation trials failed source originality and numerical accuracy; v1 practice limits written tasks to explain/compare/scenarios and Python labs to a fixed solve(data) interface with server-built starter/runner. Original ML material was 1dffe36e-ed05-49b9-860a-e4038a5e9cfd; original topics were missing-value preprocessing. Security CIA cases now use the foundations lecture (603b4c24-c100-4d0a-8000-3f1b6dafdb17), whose pages explicitly teach CIA; the former lab was primarily VM/network practice and did not sufficiently support that topic. MapReduce remains grounded in its lab PDF. MapReduce written tasks are narrowed to mapper/group/reducer logic; a trial added unsupported Hadoop fault-tolerance claims. This is recorded as a failed content review despite runnable reference code."
+}

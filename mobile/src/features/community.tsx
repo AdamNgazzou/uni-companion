@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button, Chip, Empty, Field, Header, Icon, Notice, Page, Section, T, layout } from '../ui';
@@ -8,7 +8,10 @@ import { errorText } from '../api/client';
 import type { CommunityPost, CommunityPage, Course } from '../api/types';
 import { useSession } from '../auth/session';
 import { useResource } from './hooks';
-import { ResourceState } from './courses';
+import { ResourceState } from './resource-state';
+import { BookmarkControl, FollowControl, PostControls } from './forum-controls';
+import { composerDrafts } from '../community/draft-runtime';
+import type { ComposerDraft } from '../community/drafts';
 
 function age(value: string) {
   const minutes = Math.max(1, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
@@ -59,7 +62,7 @@ function Identity({ post }: { post: CommunityPost }) {
           </T>
           {post.isOriginalPoster && (
             <T variant="small" style={{ color: c.blue }}>
-              OP
+              Author
             </T>
           )}
           {post.isSample && (
@@ -202,7 +205,11 @@ function ThreadPreview({ post }: { post: CommunityPost }) {
   );
 }
 export function DiscussScreen() {
-  const [courseId, setCourse] = useState('');
+  const params = useLocalSearchParams<{ courseId?: string }>();
+  return <DiscussionFeed key={params.courseId || ''} courseId={params.courseId || ''} />;
+}
+function DiscussionFeed({ courseId }: { courseId: string }) {
+  const setCourse = (value: string) => router.setParams({ courseId: value });
   const [kind, setKind] = useState('');
   const [sort, setSort] = useState('recent');
   const [page, setPage] = useState(1);
@@ -211,7 +218,7 @@ export function DiscussScreen() {
     `/community/posts?sort=${sort}&page=${page}${courseId ? '&courseId=' + encodeURIComponent(courseId) : ''}${kind ? '&kind=' + encodeURIComponent(kind) : ''}`,
   );
   return (
-    <Page>
+    <Page onRefresh={resource.reload} refreshing={resource.loading}>
       <Header title="Your campus, together" back={false} />
       <View style={{ gap: 8 }}>
         <T variant="heading">{'Good questions.\nBetter together.'}</T>
@@ -337,14 +344,19 @@ export function DiscussScreen() {
   );
 }
 export function ThreadScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [page, setPage] = useState(1);
+  const { id, replyPage, replyId } = useLocalSearchParams<{
+    id: string;
+    replyPage?: string;
+    replyId?: string;
+  }>();
+  const [page, setPage] = useState(Math.min(100000, Math.max(1, Number(replyPage) || 1)));
+  const [resolutionError, setResolutionError] = useState('');
   const thread = useResource<CommunityPost>(`/community/posts/${id}`);
   const replies = useResource<CommunityPage>(`/community/posts/${id}/replies?page=${page}`);
   return (
     <Page
       footer={
-        thread.data ? (
+        thread.data && !thread.data.isDeleted ? (
           <Button
             label="Add your reply"
             icon="Reply"
@@ -365,13 +377,32 @@ export function ThreadScreen() {
           <T selectable style={{ lineHeight: 27 }}>
             {thread.data.body}
           </T>
-          <Votes post={thread.data} />
+          {!thread.data.isDeleted && <Votes post={thread.data} />}
+          {thread.data.acceptedReplyId && (
+            <Notice tone="success">The asker selected a helpful reply.</Notice>
+          )}
+          <PostControls post={thread.data} onChanged={thread.reload} />
+          {!thread.data.isDeleted && (
+            <>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <BookmarkControl kind="thread" id={id} compact />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <FollowControl id={id} />
+                </View>
+              </View>
+            </>
+          )}
+          {!!resolutionError && <Notice tone="error">{resolutionError}</Notice>}
           {thread.data.isSample && (
             <T variant="small">
               This thread was started by a fictional student for the demo. Your replies are real.
             </T>
           )}
-          <Section title={`${replies.data?.total ?? thread.data.replyCount} replies`} />
+          <Section
+            title={`${replies.data?.total ?? thread.data.replyCount} ${(replies.data?.total ?? thread.data.replyCount) === 1 ? 'reply' : 'replies'}`}
+          />
           <ResourceState {...replies} retry={replies.reload} />
           {replies.data?.data.map((reply) => (
             <View
@@ -386,7 +417,45 @@ export function ThreadScreen() {
             >
               <Identity post={reply} />
               <T selectable>{reply.body}</T>
-              <Votes post={reply} />
+              {!reply.isDeleted && <Votes post={reply} />}
+              {reply.id === replyId && (
+                <Notice>This is the reply you opened from your activity.</Notice>
+              )}
+              {thread.data?.acceptedReplyId === reply.id && (
+                <Notice tone="success">Helpful reply · selected by the asker</Notice>
+              )}
+              <PostControls
+                post={reply}
+                onChanged={() => {
+                  thread.reload();
+                  replies.reload();
+                }}
+              />
+              {thread.data?.isMine &&
+                thread.data.kind === 'Question' &&
+                !thread.data.isDeleted &&
+                !reply.isDeleted && (
+                  <Button
+                    label={
+                      thread.data.acceptedReplyId === reply.id
+                        ? 'Unselect helpful reply'
+                        : 'Mark as helpful reply'
+                    }
+                    kind="quiet"
+                    onPress={() => {
+                      setResolutionError('');
+                      void api
+                        .request(`/community/posts/${id}/resolution`, {
+                          method: 'PUT',
+                          body: JSON.stringify({
+                            replyId: thread.data?.acceptedReplyId === reply.id ? null : reply.id,
+                          }),
+                        })
+                        .then(thread.reload)
+                        .catch((e) => setResolutionError(errorText(e)));
+                    }}
+                  />
+                )}
             </View>
           ))}
           {replies.data?.total === 0 && (
@@ -418,39 +487,126 @@ export function ThreadScreen() {
   );
 }
 export function ComposeScreen() {
-  const params = useLocalSearchParams<{ courseId?: string; parentId?: string }>();
-  const replying = !!params.parentId;
+  const params = useLocalSearchParams<{ courseId?: string; parentId?: string; editId?: string }>();
   const { profile } = useSession();
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [kind, setKind] = useState('Question');
-  const [courseId, setCourse] = useState(params.courseId || '');
-  const [anonymous, setAnonymous] = useState(false);
+  const edit = useResource<CommunityPost>(
+    params.editId ? `/community/posts/${params.editId}/entry` : null,
+  );
+  if (params.editId && (!edit.data || !edit.data.isMine || edit.data.isDeleted))
+    return (
+      <Page>
+        <Header title="Edit contribution" />
+        <ResourceState {...edit} retry={edit.reload} />
+        {edit.data && <Notice>This contribution cannot be edited.</Notice>}
+      </Page>
+    );
+  return (
+    <Composer
+      key={`${profile?.id}:${params.editId || params.parentId || params.courseId || 'new'}`}
+      params={params}
+      initial={edit.data || undefined}
+    />
+  );
+}
+function Composer({
+  params,
+  initial,
+}: {
+  params: { courseId?: string; parentId?: string; editId?: string };
+  initial?: CommunityPost;
+}) {
+  const { profile } = useSession();
+  const parentId = params.parentId || initial?.parentId;
+  const replying = !!parentId;
+  const scope = params.editId
+    ? `edit:${params.editId}`
+    : parentId
+      ? `reply:${parentId}`
+      : `new:${params.courseId || 'campus'}`;
+  const generation = useRef(composerDrafts.generation());
+  const closed = useRef(false);
+  const [draft, setDraft] = useState<ComposerDraft>(() => ({
+    title: initial?.title || '',
+    body: initial?.body || '',
+    kind: initial?.kind || 'Question',
+    courseId: params.courseId || initial?.courseId || '',
+    anonymous: initial?.isAnonymous || false,
+    requestKey: newKey(),
+    updatedAt: Date.now(),
+  }));
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const key = useRef(newKey());
-  const previous = useRef('');
-  const courses = useResource<{ data: Course[] }>(replying ? null : '/courses?limit=100');
-  const parent = useResource<CommunityPost>(
-    replying ? `/community/posts/${params.parentId}` : null,
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const courses = useResource<{ data: Course[] }>(
+    !replying && !params.editId ? '/courses?limit=100' : null,
   );
+  const parent = useResource<CommunityPost>(parentId ? `/community/posts/${parentId}` : null);
+  useEffect(() => {
+    let active = true;
+    if (!profile) return;
+    void composerDrafts
+      .read(profile.id, scope, generation.current)
+      .then((value) => {
+        if (active) {
+          if (value) setDraft(value);
+          setLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setError('Could not restore your draft. You can still write a contribution.');
+          setLoaded(true);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [profile, scope]);
+  useEffect(() => {
+    if (!loaded || !profile || closed.current) return;
+    void composerDrafts
+      .save(profile.id, scope, { ...draft, updatedAt: Date.now() }, generation.current)
+      .catch(() => setError('Could not save this draft on your device.'));
+  }, [draft, loaded, profile, scope]);
+  function change(value: Partial<ComposerDraft>) {
+    setDraft((current) => ({ ...current, ...value }));
+  }
   async function submit() {
-    if (busy) return;
+    if (busy || !profile) return;
     setBusy(true);
     setError('');
-    const data = JSON.stringify({
-      body: body.trim(),
-      isAnonymous: anonymous,
-      ...(!replying ? { title: title.trim(), kind, courseId: courseId || null } : {}),
-    });
-    if (previous.current && previous.current !== data) key.current = newKey();
-    previous.current = data;
+    const body = JSON.stringify(
+      params.editId
+        ? { title: draft.title.trim(), body: draft.body.trim() }
+        : {
+            body: draft.body.trim(),
+            isAnonymous: draft.anonymous,
+            ...(!replying
+              ? { title: draft.title.trim(), kind: draft.kind, courseId: draft.courseId || null }
+              : {}),
+          },
+    );
+    const key = draft.lastPayload && draft.lastPayload !== body ? newKey() : draft.requestKey;
+    const sent = { ...draft, requestKey: key, lastPayload: body, updatedAt: Date.now() };
+    setDraft(sent);
     try {
+      await composerDrafts.save(profile.id, scope, sent, generation.current);
       const post = await api.request<CommunityPost>(
-        replying ? `/community/posts/${params.parentId}/replies` : '/community/posts',
-        { method: 'POST', body: data, headers: { 'Idempotency-Key': key.current } },
+        params.editId
+          ? `/community/posts/${params.editId}`
+          : replying
+            ? `/community/posts/${parentId}/replies`
+            : '/community/posts',
+        {
+          method: params.editId ? 'PATCH' : 'POST',
+          headers: { 'Idempotency-Key': key },
+          body,
+        },
       );
-      if (replying) router.back();
+      closed.current = true;
+      void composerDrafts.remove(profile.id, scope).catch(() => {});
+      if (params.editId || replying) router.back();
       else router.replace({ pathname: '/thread', params: { id: post.id } });
     } catch (e) {
       setError(errorText(e));
@@ -458,48 +614,75 @@ export function ComposeScreen() {
       setBusy(false);
     }
   }
+  async function discard() {
+    if (!profile) return;
+    try {
+      await composerDrafts.remove(profile.id, scope);
+      change({
+        title: initial?.title || '',
+        body: initial?.body || '',
+        requestKey: newKey(),
+        lastPayload: undefined,
+      });
+      setConfirmDiscard(false);
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
+  if (!loaded)
+    return (
+      <Page>
+        <Header title="Your draft" />
+        <T>Restoring your draft…</T>
+      </Page>
+    );
   return (
     <Page
       footer={
         <Button
-          label={replying ? 'Post reply' : 'Post to campus'}
+          label={params.editId ? 'Save changes' : replying ? 'Post reply' : 'Post to campus'}
           busy={busy}
-          disabled={!body.trim() || (!replying && !title.trim()) || (replying && !parent.data)}
+          disabled={
+            !draft.body.trim() ||
+            (!replying && !draft.title.trim()) ||
+            (replying && (!parent.data || parent.data.isDeleted))
+          }
           icon="Send"
           onPress={() => void submit()}
         />
       }
     >
-      <Header title={replying ? 'Your reply' : 'Start a conversation'} />
+      <Header
+        title={
+          params.editId ? 'Edit contribution' : replying ? 'Your reply' : 'Start a conversation'
+        }
+      />
       <T variant="heading">
         {replying ? 'A little help goes a long way.' : 'What’s on your mind?'}
       </T>
       {replying && (
         <>
           <ResourceState {...parent} retry={parent.reload} />
-          {!!parent.data && (
-            <T variant="label" style={{ color: c.muted }}>
-              Replying to: {parent.data.title}
-            </T>
-          )}
+          {parent.data && <T variant="label">Replying to: {parent.data.title}</T>}
         </>
       )}
       {!replying && (
+        <Field
+          label="Title"
+          value={draft.title}
+          onChangeText={(title) => change({ title })}
+          maxLength={180}
+        />
+      )}
+      {!replying && !params.editId && (
         <>
-          <Field
-            label="Title"
-            placeholder="Ask the question you wish someone would explain…"
-            value={title}
-            onChangeText={setTitle}
-            maxLength={180}
-          />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {['Question', 'Study tip', 'Discussion'].map((label) => (
+            {(['Question', 'Study tip', 'Discussion'] as const).map((kind) => (
               <Chip
-                key={label}
-                label={label}
-                selected={kind === label}
-                onPress={() => setKind(label)}
+                key={kind}
+                label={kind}
+                selected={draft.kind === kind}
+                onPress={() => change({ kind })}
               />
             ))}
           </View>
@@ -511,13 +694,17 @@ export function ComposeScreen() {
             style={{ flexGrow: 0 }}
             contentContainerStyle={{ gap: 8 }}
           >
-            <Chip label="Campus life" selected={!courseId} onPress={() => setCourse('')} />
+            <Chip
+              label="Campus life"
+              selected={!draft.courseId}
+              onPress={() => change({ courseId: '' })}
+            />
             {courses.data?.data.map((course) => (
               <Chip
                 key={course.id}
                 label={course.title}
-                selected={courseId === course.id}
-                onPress={() => setCourse(course.id)}
+                selected={draft.courseId === course.id}
+                onPress={() => change({ courseId: course.id })}
               />
             ))}
           </ScrollView>
@@ -525,67 +712,64 @@ export function ComposeScreen() {
       )}
       <Field
         label={replying ? 'Your reply' : 'Your message'}
-        placeholder={
-          replying
-            ? 'Share what helped you, or ask a follow-up.'
-            : 'A little context helps people help you.'
-        }
-        value={body}
-        onChangeText={setBody}
+        value={draft.body}
+        onChangeText={(body) => change({ body })}
         multiline
         maxLength={8000}
         style={{ minHeight: 150, textAlignVertical: 'top' }}
       />
-      <T variant="small" style={{ alignSelf: 'flex-end' }}>
-        {body.length} / 8000
-      </T>
-      <Pressable
-        accessibilityRole="switch"
-        accessibilityLabel="Post anonymously"
-        accessibilityState={{ checked: anonymous }}
-        aria-checked={anonymous}
-        onPress={() => setAnonymous((value) => !value)}
-        style={{
-          flexDirection: 'row',
-          gap: 12,
-          alignItems: 'center',
-          padding: 16,
-          borderRadius: 16,
-          backgroundColor: anonymous ? c.blueSoft : c.canvas,
-          minHeight: 64,
-        }}
-      >
-        <Icon name={anonymous ? 'EyeOff' : 'UserRound'} color={anonymous ? c.blue : c.muted} />
-        <View style={{ flex: 1, gap: 4 }}>
-          <T variant="label">Post anonymously</T>
-          <T variant="small">
-            {anonymous
-              ? 'Shown as Anonymous student.'
-              : `Shown as ${profile?.displayName || 'your profile'}.`}
-          </T>
-        </View>
-        <View
+      <T variant="small">{draft.body.length} / 8000</T>
+      {!params.editId ? (
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityLabel="Post anonymously"
+          accessibilityState={{ checked: draft.anonymous }}
+          aria-checked={draft.anonymous}
+          onPress={() => change({ anonymous: !draft.anonymous })}
           style={{
-            width: 26,
-            height: 26,
-            borderRadius: 8,
-            borderWidth: 2,
-            borderColor: anonymous ? c.blue : c.muted,
+            flexDirection: 'row',
+            gap: 12,
+            padding: 16,
+            borderRadius: 16,
+            backgroundColor: draft.anonymous ? c.blueSoft : c.canvas,
+            minHeight: 64,
             alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: anonymous ? c.blue : 'transparent',
           }}
         >
-          {anonymous && <Icon name="Check" size={18} color={c.white} />}
-        </View>
-      </Pressable>
-      {anonymous && (
+          <Icon name={draft.anonymous ? 'EyeOff' : 'UserRound'} color={c.blue} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <T variant="label">Post anonymously</T>
+            <T variant="small">
+              {draft.anonymous
+                ? 'Shown as Anonymous student.'
+                : `Shown as ${profile?.displayName || 'your profile'}.`}
+            </T>
+          </View>
+          <Icon name={draft.anonymous ? 'Check' : 'UserRound'} color={c.blue} />
+        </Pressable>
+      ) : (
+        <Notice>
+          Posting identity stays {initial?.isAnonymous ? 'anonymous' : 'with your profile'} when you
+          edit.
+        </Notice>
+      )}
+      {draft.anonymous && (
         <T variant="small">
           Your identity is hidden from other students. The app retains ownership for account
           security and moderation.
         </T>
       )}
-      <T variant="small">Be kind. Give context. Keep private information private.</T>
+      <T variant="small">
+        Your draft is saved on this device. Going back keeps it; signing out clears drafts.
+      </T>
+      <Button label="Discard draft" kind="quiet" onPress={() => setConfirmDiscard(true)} />
+      {confirmDiscard && (
+        <>
+          <Notice>Discard the text saved for this contribution?</Notice>
+          <Button label="Confirm discard" kind="secondary" onPress={() => void discard()} />
+          <Button label="Keep my draft" kind="quiet" onPress={() => setConfirmDiscard(false)} />
+        </>
+      )}
       {!!error && <Notice tone="error">{error}</Notice>}
     </Page>
   );

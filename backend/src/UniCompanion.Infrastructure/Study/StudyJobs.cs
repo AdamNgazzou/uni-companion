@@ -22,16 +22,27 @@ public sealed class StudyJobs(AppDbContext db, StudyAccess access, TimeProvider 
 
     public async Task<StudyJob> EnqueueAsync(Guid courseId, string owner, string key, StudyRequest request, CancellationToken ct)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var job = await EnqueueInTransactionAsync(courseId, owner, key, request, ct);
+        await transaction.CommitAsync(ct);
+        return job;
+    }
+
+    internal async Task<StudyJob> EnqueueInTransactionAsync(Guid courseId, string owner, string key, StudyRequest request, CancellationToken ct, bool allowTutor = false, Guid[]? sourceVersions = null)
+    {
+        if (db.Database.CurrentTransaction is null) throw new InvalidOperationException("Study admission requires a transaction.");
         ValidateKey(key);
-        if (request.Kind is not ("answer" or "summary" or "quiz") || request.Language is not ("en" or "fr") ||
-            (request.Kind == "answer" && (string.IsNullOrWhiteSpace(request.Question) || request.Question.Length > 2000)) ||
-            (request.Kind != "answer" && request.MaterialId is null && string.IsNullOrWhiteSpace(request.ChapterId)) ||
-            (request.Kind == "quiz" && request.Count is not (5 or 10)) || request.ChapterId?.Length > 100)
+        if (request.Kind is not ("answer" or "summary" or "quiz" or "practice" or "tutor") || request.Language is not ("en" or "fr") ||
+            (request.Kind is "answer" or "tutor" && (string.IsNullOrWhiteSpace(request.Question) || request.Question.Length > 2000)) ||
+            (request.Kind is not ("answer" or "tutor") && request.MaterialId is null && string.IsNullOrWhiteSpace(request.ChapterId)) ||
+            (request.Kind == "quiz" && request.Count is not (5 or 10)) || request.ChapterId?.Length > 100 ||
+            (request.Kind == "practice" && (request.Practice is null || request.Practice.Mode is not ("written" or "coding" or "mixed") || request.Practice.Difficulty is not ("guided" or "standard" or "challenge") || request.Practice.Minutes is not (15 or 30 or 45) || request.Question?.Length > 1000)) ||
+            (request.Kind != "practice" && request.Practice is not null) ||
+            (request.Kind == "tutor" && (!allowTutor || request.Tutor is null)) || (request.Kind != "tutor" && request.Tutor is not null))
             throw new StudyRequestException(400, "invalid_study_request");
         if (!await access.CanReadAsync(courseId, owner, ct)) throw new StudyRequestException(404, "not_found");
         var requestJson = JsonSerializer.Serialize(request, Json);
         var requestHash = Hash(courseId + requestJson);
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
         // One admission lock enforces both account quotas and the small global queue ceiling.
         await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(427815918)", ct);
         var mapping = await db.StudyRequestKeys.SingleOrDefaultAsync(x => x.OwnerId == owner && x.Key == key, ct);
@@ -43,10 +54,10 @@ public sealed class StudyJobs(AppDbContext db, StudyAccess access, TimeProvider 
         var materials = db.Materials.AsNoTracking().Where(m => m.CourseId == courseId && m.ContentType == "application/pdf" && m.CurrentVersionId != null);
         if (request.MaterialId is { } materialId) materials = materials.Where(m => m.Id == materialId);
         if (request.ChapterId is { Length: > 0 } chapter) materials = materials.Where(m => m.LessonId == chapter);
-        var versions = await materials.OrderBy(m => m.SortOrder).ThenBy(m => m.Id).Select(m => m.CurrentVersionId!.Value).ToArrayAsync(ct);
+        var versions = sourceVersions ?? await materials.OrderBy(m => m.SortOrder).ThenBy(m => m.Id).Select(m => m.CurrentVersionId!.Value).ToArrayAsync(ct);
         if ((request.MaterialId is not null || request.ChapterId is not null) && versions.Length == 0)
             throw new StudyRequestException(404, "not_found");
-        if (versions.Length > 0 && request.Kind != "answer")
+        if (versions.Length > 0 && request.Kind is not ("answer" or "tutor"))
         {
             var indexed = await db.DocumentChunks.Where(c => versions.Contains(c.MaterialVersionId) && c.Model == PythonAiBridge.Model)
                 .Select(c => c.MaterialVersionId).Distinct().CountAsync(ct);
@@ -54,13 +65,12 @@ public sealed class StudyJobs(AppDbContext db, StudyAccess access, TimeProvider 
             var chunkCount = await db.DocumentChunks.CountAsync(c => versions.Contains(c.MaterialVersionId) && c.Model == PythonAiBridge.Model, ct);
             if (chunkCount > 140) throw new StudyRequestException(400, "scope_too_large");
         }
-        var fingerprint = Hash(requestHash + string.Join(',', versions.Order()) + PromptVersion + PythonAiBridge.Model);
-        var cached = await db.StudyJobs.FirstOrDefaultAsync(x => x.OwnerId == owner && x.CourseId == courseId && x.Fingerprint == fingerprint && x.State == JobStates.Succeeded, ct);
+        var fingerprint = Hash(requestHash + string.Join(',', versions.Order()) + PromptVersion + PythonAiBridge.Model + (request.Kind == "practice" ? UniCompanion.Infrastructure.Practice.PracticeComposer.Version : ""));
+        var cached = request.Kind is "practice" or "tutor" ? null : await db.StudyJobs.FirstOrDefaultAsync(x => x.OwnerId == owner && x.CourseId == courseId && x.Fingerprint == fingerprint && x.State == JobStates.Succeeded, ct);
         if (cached is not null)
         {
             db.StudyRequestKeys.Add(new StudyRequestKey { OwnerId = owner, Key = key, RequestHash = requestHash, JobId = cached.Id });
             await db.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
             return cached;
         }
         var now = clock.GetUtcNow();
@@ -84,7 +94,6 @@ public sealed class StudyJobs(AppDbContext db, StudyAccess access, TimeProvider 
         db.StudyJobs.Add(job);
         db.StudyRequestKeys.Add(new StudyRequestKey { OwnerId = owner, Key = key, RequestHash = requestHash, JobId = job.Id });
         await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
         return job;
     }
 
@@ -118,11 +127,29 @@ public sealed class StudyJobs(AppDbContext db, StudyAccess access, TimeProvider 
             var request = requests[j.Id];
             var course = courseNames.GetValueOrDefault(j.CourseId, "Course");
             var scope = request.MaterialId is { } id ? materialNames.GetValueOrDefault(id, "Course material") : request.ChapterId is not null ? "Chapter materials" : course;
-            return new StudyLabels(request.Kind == "answer" ? request.Question! : scope, course, scope);
+            return new StudyLabels(request.Kind is "answer" or "tutor" ? request.Question! : scope, course, scope);
         });
     }
 
-    public static object PublicResult(StudyResult result) => result.Kind == "quiz"
+    public static object PublicRequest(StudyRequest request) => new { request.Kind, request.Question, request.MaterialId, request.ChapterId, request.Language, request.Count, request.Practice, conversationId = request.Tutor?.ConversationId };
+
+    public static object PublicResult(StudyResult result) => result.Kind == "practice"
+        ? new
+        {
+            result.Kind,
+            result.InsufficientEvidence,
+            result.CoveredPages,
+            result.TotalPages,
+            practice = result.Practice is null ? null : new
+            {
+                result.Practice.Mode,
+                result.Practice.Language,
+                result.Practice.Objectives,
+                result.Practice.Prerequisites,
+                tasks = result.Practice.Tasks.Select(t => new { t.Id, t.Kind, t.Title, t.Prompt, t.Given, t.Citations, t.StarterCode, t.RunInstructions, t.ExpectedOutput, t.Steps, t.Checks })
+            }
+        }
+        : result.Kind == "quiz"
         ? new { result.Kind, result.InsufficientEvidence, questions = result.Questions.Select(q => new { q.Id, q.Question, q.Options, q.Citations }), result.CoveredPages, result.TotalPages }
         : new { result.Kind, result.InsufficientEvidence, result.Paragraphs, result.CoveredPages, result.TotalPages };
 

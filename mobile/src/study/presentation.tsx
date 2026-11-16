@@ -44,7 +44,7 @@ function Meta({
     </View>
   );
 }
-function StudyText({ text }: { text: string }) {
+export function StudyText({ text }: { text: string }) {
   return (
     <T selectable style={{ fontSize: 17, lineHeight: 28 }}>
       {text.split(/(\*\*[^*\n]+\*\*)/g).map((part, index) =>
@@ -77,7 +77,7 @@ export function StudyArticle({
   ).size;
   function study(kind: 'answer' | 'quiz') {
     router.push({
-      pathname: '/study',
+      pathname: kind === 'answer' ? '/tutor' : '/study',
       params: {
         courseId: job.courseId,
         kind,
@@ -198,13 +198,22 @@ export function StudyProgress({ job }: { job: Job }) {
     </View>
   );
 }
+export function openStudy(job: Job) {
+  if (job.kind === 'tutor' && job.request.conversationId)
+    router.push({ pathname: '/tutor', params: { id: job.request.conversationId } });
+  else router.push({ pathname: '/job', params: { id: job.id } });
+}
 export function HistoryEntry({ job, onPress }: { job: Job; onPress: () => void }) {
   const kind =
-    job.kind === 'quiz'
-      ? `Practice · ${job.request.count || 5} questions`
-      : job.kind === 'summary'
-        ? 'Summary'
-        : 'Explanation';
+    job.kind === 'tutor'
+      ? 'Course tutor'
+      : job.kind === 'practice'
+        ? 'Written & coding practice'
+        : job.kind === 'quiz'
+          ? `Quiz · ${job.request.count || 5} questions`
+          : job.kind === 'summary'
+            ? 'Summary'
+            : 'Explanation';
   return (
     <Pressable
       accessibilityRole="button"

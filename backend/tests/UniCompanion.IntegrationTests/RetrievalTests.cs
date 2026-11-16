@@ -59,8 +59,10 @@ public sealed class RetrievalTests(ApiFixture app) : IClassFixture<ApiFixture>
 
 public sealed class FakeEmbedding : IQueryEmbedding
 {
+    public int FailuresRemaining { get; set; }
     public Task<float[]> EmbedAsync(string question, CancellationToken cancellationToken)
     {
+        if (FailuresRemaining > 0) { FailuresRemaining--; throw new AiUnavailableException(); }
         var vector = new float[384]; vector[0] = 1;
         return Task.FromResult(vector);
     }
